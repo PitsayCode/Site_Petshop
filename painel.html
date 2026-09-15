@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de Comandas — Pet Tem Home</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0C120D">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="css/styles.css?v=3">
+<style>
+  body{background:var(--bg-sunk);min-height:100vh;}
+  .hud-top{position:sticky;top:0;z-index:20;background:color-mix(in srgb, var(--bg-sunk) 90%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+  .hud-top .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 20px;}
+  .hud-title{display:flex;align-items:center;gap:12px;}
+  .hud-title h1{font-size:22px;}
+  .hud-title small{display:block;color:var(--ink-faint);font-weight:700;font-size:12.5px;}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--leaf);}
+  .live::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--leaf);animation:blink 1.6s infinite;}
+  @keyframes blink{50%{opacity:.25;}}
+  .hud-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .keychip{font-size:12px;font-weight:800;padding:8px 12px;border-radius:999px;background:var(--bg-raised);border:1px solid var(--line);color:var(--ink-soft);}
+  .store-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:0 20px 12px;}
+  .hud{display:grid;grid-template-columns:1fr 320px;gap:18px;padding:18px 20px 40px;align-items:start;}
+  @media (max-width:1100px){ .hud{grid-template-columns:1fr;} }
+  .board{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:14px;overflow-x:auto;padding-bottom:8px;}
+  .col{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px;min-height:200px;}
+  .col-head{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 12px;font-family:'Fredoka';font-weight:600;font-size:17px;}
+  .col-head span{font-family:'Nunito';font-size:12px;font-weight:800;background:var(--bg-raised);padding:3px 9px;border-radius:999px;}
+  .col-list{display:flex;flex-direction:column;gap:10px;}
+  .comanda{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px;animation:pop .35s ease both;border-left:5px solid var(--sun);}
+  .comanda.separando{border-left-color:var(--water);}
+  .comanda.saiu{border-left-color:var(--earth);}
+  .comanda.entregue{border-left-color:var(--leaf);opacity:.85;}
+  .comanda.cancelado{border-left-color:var(--danger);opacity:.6;}
+  .comanda.fresh{box-shadow:0 0 0 2px var(--sun), var(--shadow);}
+  .c-top{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:800;color:var(--ink-faint);}
+  .c-head{font-family:'Fredoka';font-size:17px;font-weight:500;line-height:1.3;margin:8px 0 10px;}
+  .c-head b{color:var(--leaf);font-weight:600;}
+  .c-sec{border-top:1px dashed var(--line);padding-top:8px;margin-top:8px;font-size:13.5px;}
+  .c-sec .k{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);}
+  .c-sec a{color:var(--leaf);font-weight:800;text-decoration:none;}
+  .c-items{margin:0;padding-left:18px;}
+  .c-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-weight:800;}
+  .c-total b{font-family:'Fredoka';font-size:19px;color:var(--leaf);}
+  .c-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;}
+  .c-actions button{flex:1 1 auto;border:1px solid var(--line-strong);background:var(--bg);border-radius:999px;padding:8px 10px;font-weight:800;font-size:12.5px;cursor:pointer;}
+  .c-actions button.primary{background:var(--forest);color:var(--forest-ink);border-color:var(--forest);}
+  .c-actions button:hover{border-color:var(--leaf);}
+  .cipher{margin-top:10px;font-family:ui-monospace,Consolas,monospace;font-size:11px;word-break:break-all;background:var(--bg-sunk);border-radius:8px;padding:8px;color:var(--ink-faint);max-height:120px;overflow:auto;}
+  .locked{font-size:13px;color:var(--ink-faint);}
+  .feed{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:14px;position:sticky;top:130px;}
+  .feed h2{font-size:18px;margin-bottom:10px;}
+  .feed ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto;}
+  .feed li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;padding:8px;border-radius:10px;background:var(--bg-raised);animation:pop .3s ease both;}
+  .feed li i{font-style:normal;font-size:18px;}
+  .feed li small{display:block;color:var(--ink-faint);font-weight:700;font-size:11.5px;}
+  .demo-note{margin:18px 20px 0;padding:10px 14px;border-radius:12px;background:color-mix(in srgb, var(--sun) 16%, transparent);font-size:13px;font-weight:700;}
+  .empty-col{font-size:13px;color:var(--ink-faint);text-align:center;padding:18px 6px;}
+</style>
+</head>
+<body>
+
+<div class="hud-top">
+  <div class="bar">
+    <div class="hud-title">
+      <span style="font-size:30px" aria-hidden="true">🧾</span>
+      <div>
+        <h1>Painel de Comandas</h1>
+        <small>Pet Tem Home · <span class="live">ao vivo</span></small>
+      </div>
+    </div>
+    <div class="hud-tools">
+      <span class="keychip" id="keyChip">🔑 Preparando chave…</span>
+      <button type="button" class="icon-btn" id="copyKeyBtn">Copiar chave pública</button>
+      <button type="button" class="icon-btn" id="soundBtn" aria-pressed="false">🔕 Som</button>
+      <button type="button" class="icon-btn" id="cipherBtn" aria-pressed="false">Ver dados cifrados</button>
+      <button type="button" class="icon-btn" id="resetBtn">Limpar demonstração</button>
+    </div>
+  </div>
+  <div class="store-tabs chips" id="storeTabs" role="group" aria-label="Filtrar por loja"></div>
+</div>
+
+<p class="demo-note" id="demoNote">
+  Modo demonstração: este painel usa os dados guardados neste navegador. As comandas são abertas com a chave privada deste computador, que não pode ser exportada.
+</p>
+
+<main class="hud">
+  <div class="board" id="board"></div>
+  <aside class="feed">
+    <h2>Atividade recente</h2>
+    <ul id="feed"></ul>
+  </aside>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/config.js"></script>
+<script src="js/crypto.js"></script>
+<script src="js/api.js"></script>
+<script src="js/painel.js"></script>
+</body>
+</html>

@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pet Tem Home — Pet shop em Francisco Morato</title>
+<meta name="description" content="Ração, aquarismo, roupinhas, brinquedos, pesca e jardinagem. Três lojas em Francisco Morato - SP, pedidos online com entrega e atendimento pelo WhatsApp.">
+<meta name="theme-color" content="#2E5E3E">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="css/styles.css?v=4">
+</head>
+<body>
+
+<!-- Ícones reutilizáveis -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-wa" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20Zm4.4-5.9c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1-.2.2-.6.8-.8 1-.1.2-.3.2-.5.1-.2-.1-1-.4-2-1.2-.7-.6-1.2-1.4-1.4-1.6-.1-.2 0-.4.1-.5l.4-.4c.1-.1.2-.3.2-.4.1-.2 0-.3 0-.5l-.7-1.7c-.2-.4-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9 0 1.1.8 2.2.9 2.3.1.2 1.6 2.5 4 3.5.6.2 1 .4 1.3.5.6.2 1.1.1 1.5-.1.5-.2 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1-.1-.1-.2-.2-.4-.3Z"/></symbol>
+  <symbol id="i-paw" viewBox="0 0 64 64"><path d="M32 50c-8 0-14-4.5-14-10.3 0-4 3.2-6.4 6.4-8.2 1.2-.7 1.7-1.8 1.4-3.1l-.8-3c-.5-2.1 1.6-4 3.6-3l3.2 1.5a3.2 3.2 0 0 0 2.8 0l3.2-1.5c2-1 4.1.9 3.6 3l-.8 3c-.3 1.3.2 2.4 1.4 3.1 3.2 1.8 6.4 4.2 6.4 8.2C46 45.5 40 50 32 50z"/><circle cx="23" cy="17" r="4.4"/><circle cx="41" cy="17" r="4.4"/><circle cx="12" cy="27" r="4"/><circle cx="52" cy="27" r="4"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 8h14l-1 12H6L5 8Zm4 0V6a3 3 0 0 1 6 0v2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></g></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path fill="currentColor" d="M20 4C10 4 4 9 4 16c0 1.4.3 2.7.8 3.8C6 15 9.5 11.6 14 10c-3.6 2.2-6.4 5.6-7.6 9.6 1.3.9 2.9 1.4 4.6 1.4 7 0 9-8 9-17Z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></g></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></symbol>
+</svg>
+
+<!-- ================= HEADER + MENU INTERATIVO ================= -->
+<header class="site-header" id="siteHeader">
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="Pet Tem Home — início">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="31" fill="#2E5E3E"/>
+        <path d="M10 46c8-6 16-8 22-8s14 2 22 8v4a31 31 0 0 1-44 0Z" fill="#6E9448"/>
+        <use href="#i-paw" x="14" y="8" width="36" height="36" fill="#F7F3E8"/>
+      </svg>
+      <span class="brand-word">Pet Tem Home<small>PET SHOP · FRANCISCO MORATO</small></span>
+    </a>
+
+    <nav class="links" id="primaryNav" aria-label="Principal">
+      <span class="nav-indicator" id="navIndicator" aria-hidden="true"></span>
+      <a href="#sobre" data-nav="sobre">Sobre</a>
+      <div class="has-mega" id="megaWrap">
+        <button type="button" id="megaToggle" aria-expanded="false" aria-controls="megaMenu" data-nav="produtos">
+          Produtos
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="mega" id="megaMenu" role="menu"></div>
+      </div>
+      <a href="#vitrine" data-nav="vitrine">Vitrine 3D</a>
+      <a href="#pedido" data-nav="pedido">Como pedir</a>
+      <a href="#lojas" data-nav="lojas">Lojas</a>
+    </nav>
+
+    <div class="nav-actions">
+      <a class="icon-btn" id="accountBtn" href="login.html">
+        <svg aria-hidden="true"><use href="#i-user"/></svg>
+        <span class="account-label" id="accountLabel">Entrar</span>
+      </a>
+      <button type="button" class="icon-btn" id="cartBtn" aria-label="Abrir sacola">
+        <svg aria-hidden="true"><use href="#i-bag"/></svg>
+        <span class="badge" id="cartCount" hidden>0</span>
+      </button>
+      <button type="button" class="icon-btn burger" id="menuToggle" aria-expanded="false" aria-controls="mobileMenu" aria-label="Abrir menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+  <div class="falling-leaves" id="leaves" aria-hidden="true"></div>
+  <div class="wrap hero-grid">
+    <div class="reveal">
+      <span class="eyebrow"><svg><use href="#i-leaf"/></svg>Pet shop de bairro · 3 lojas</span>
+      <h1 style="margin-top:14px;">Cuidado natural para quem <em>enche a casa</em> de alegria.</h1>
+      <p class="hero-sub">Ração, petiscos, aquarismo, roupinhas, brinquedos, pesca e jardinagem. Peça pelo site, receba em casa ou retire na loja mais perto de você em Francisco Morato.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#produtos">
+          <svg aria-hidden="true"><use href="#i-bag"/></svg>
+          Ver produtos
+        </a>
+        <a class="btn btn-ghost" href="https://wa.me/5511934208414?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20Pet%20Tem%20Home%20%F0%9F%90%BE" target="_blank" rel="noopener">
+          <svg aria-hidden="true" style="color:#25D366"><use href="#i-wa"/></svg>
+          Falar no WhatsApp
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><b>3</b><span>Lojas físicas</span></div>
+        <div class="hero-stat"><b>+8.800</b><span>Tutores no Instagram</span></div>
+        <div class="hero-stat"><b>6</b><span>Categorias</span></div>
+      </div>
+    </div>
+
+    <div class="hero-scene reveal" aria-hidden="true">
+      <svg class="scene" viewBox="0 0 600 520">
+        <defs>
+          <clipPath id="sceneClip"><rect x="0" y="0" width="600" height="520" rx="56"/></clipPath>
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CFE6D3"/><stop offset="1" stop-color="#F4EFD9"/></linearGradient>
+        </defs>
+        <g clip-path="url(#sceneClip)">
+          <rect width="600" height="520" fill="url(#skyGrad)"/>
+          <circle cx="468" cy="112" r="70" fill="#F6DE8E" opacity=".35"/>
+          <circle cx="468" cy="112" r="44" fill="#F3CF6A"/>
+          <g class="cloud"><ellipse cx="80" cy="90" rx="46" ry="16" fill="#fff" opacity=".9"/><ellipse cx="104" cy="78" rx="26" ry="18" fill="#fff" opacity=".9"/></g>
+          <g class="cloud c2"><ellipse cx="0" cy="150" rx="38" ry="12" fill="#fff" opacity=".8"/><ellipse cx="18" cy="140" rx="20" ry="14" fill="#fff" opacity=".8"/></g>
+
+          <path d="M0 320 Q130 240 270 300 T600 280 V520 H0Z" fill="#B5D39A"/>
+          <path d="M0 372 Q160 312 330 364 T600 344 V520 H0Z" fill="#8DBF5A"/>
+
+          <!-- árvores -->
+          <g class="sway"><rect x="72" y="280" width="16" height="120" rx="6" fill="#7A5236"/><circle cx="80" cy="262" r="52" fill="#3E7B4F"/><circle cx="46" cy="296" r="36" fill="#2E5E3E"/><circle cx="114" cy="292" r="38" fill="#35694A"/></g>
+          <g class="sway d2"><rect x="532" y="286" width="14" height="100" rx="6" fill="#7A5236"/><circle cx="540" cy="266" r="42" fill="#35694A"/><circle cx="568" cy="296" r="30" fill="#2E5E3E"/></g>
+
+          <path d="M0 424 Q300 384 600 424 V520 H0Z" fill="#6E9448"/>
+
+          <!-- flores -->
+          <g><circle cx="120" cy="468" r="7" fill="#F7F3E8"/><circle cx="120" cy="468" r="3" fill="#E9B949"/><circle cx="146" cy="486" r="6" fill="#E88AA2"/><circle cx="146" cy="486" r="2.5" fill="#F7F3E8"/><circle cx="498" cy="462" r="7" fill="#F7F3E8"/><circle cx="498" cy="462" r="3" fill="#E9B949"/><circle cx="522" cy="484" r="6" fill="#E88AA2"/></g>
+
+          <!-- cachorro -->
+          <g>
+            <g class="tail"><path d="M300 432 q44 -8 50 -56" fill="none" stroke="#C8864A" stroke-width="15" stroke-linecap="round"/></g>
+            <ellipse cx="262" cy="410" rx="54" ry="60" fill="#C8864A"/>
+            <ellipse cx="250" cy="420" rx="26" ry="42" fill="#F1D9B5"/>
+            <rect x="226" y="426" width="22" height="52" rx="11" fill="#C8864A"/>
+            <rect x="258" y="426" width="22" height="52" rx="11" fill="#C8864A"/>
+            <ellipse cx="237" cy="476" rx="15" ry="8" fill="#F1D9B5"/>
+            <ellipse cx="269" cy="476" rx="15" ry="8" fill="#F1D9B5"/>
+            <ellipse cx="206" cy="322" rx="17" ry="34" fill="#8C5A30" transform="rotate(16 206 322)"/>
+            <ellipse cx="292" cy="322" rx="17" ry="34" fill="#8C5A30" transform="rotate(-16 292 322)"/>
+            <circle cx="249" cy="322" r="46" fill="#C8864A"/>
+            <ellipse cx="249" cy="346" rx="25" ry="19" fill="#F1D9B5"/>
+            <ellipse cx="249" cy="335" rx="9" ry="6.5" fill="#2A1E16"/>
+            <path d="M240 348 q9 9 18 0" fill="none" stroke="#2A1E16" stroke-width="2.4" stroke-linecap="round"/>
+            <ellipse cx="249" cy="360" rx="6" ry="8" fill="#E88AA2"/>
+            <circle cx="232" cy="312" r="5.5" fill="#2A1E16"/><circle cx="266" cy="312" r="5.5" fill="#2A1E16"/>
+            <circle cx="234" cy="310" r="1.8" fill="#fff"/><circle cx="268" cy="310" r="1.8" fill="#fff"/>
+            <rect x="216" y="364" width="66" height="11" rx="5.5" fill="#B4506A"/>
+            <circle cx="249" cy="382" r="7" fill="#E9B949"/>
+          </g>
+
+          <!-- gato -->
+          <g>
+            <g class="sway d2"><path d="M414 458 q52 -8 42 -74 q-4 -18 -18 -8" fill="none" stroke="#E39A62" stroke-width="12" stroke-linecap="round"/></g>
+            <ellipse cx="388" cy="430" rx="38" ry="48" fill="#E39A62"/>
+            <ellipse cx="385" cy="440" rx="19" ry="32" fill="#F6DDBE"/>
+            <ellipse cx="374" cy="474" rx="13" ry="8" fill="#F6DDBE"/><ellipse cx="400" cy="474" rx="13" ry="8" fill="#F6DDBE"/>
+            <path d="M356 352 L350 318 L376 338 Z" fill="#E39A62"/><path d="M410 352 L416 318 L390 338 Z" fill="#E39A62"/>
+            <path d="M358 344 L355 326 L369 337 Z" fill="#E88AA2"/><path d="M408 344 L411 326 L397 337 Z" fill="#E88AA2"/>
+            <circle cx="383" cy="364" r="34" fill="#E39A62"/>
+            <path d="M372 336 l3 10 M383 332 v11 M394 336 l-3 10" stroke="#B96F3A" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="371" cy="364" rx="4.5" ry="6.5" fill="#2E5E3E"/><ellipse cx="395" cy="364" rx="4.5" ry="6.5" fill="#2E5E3E"/>
+            <path d="M379 374 h8 l-4 5 Z" fill="#B4506A"/>
+            <path d="M366 378 h-18 M366 383 l-16 4 M400 378 h18 M400 383 l16 4" stroke="#8C5A30" stroke-width="1.6" stroke-linecap="round"/>
+          </g>
+
+          <!-- borboletas -->
+          <g class="butterfly"><g transform="translate(150 190)"><ellipse class="wing" cx="-7" cy="0" rx="8" ry="11" fill="#E9B949"/><ellipse class="wing r" cx="7" cy="0" rx="8" ry="11" fill="#E9B949"/><rect x="-1.5" y="-8" width="3" height="16" rx="1.5" fill="#2A1E16"/></g></g>
+          <g class="butterfly" style="animation-delay:-4s"><g transform="translate(360 150)"><ellipse class="wing" cx="-6" cy="0" rx="7" ry="9" fill="#E88AA2"/><ellipse class="wing r" cx="6" cy="0" rx="7" ry="9" fill="#E88AA2"/><rect x="-1.2" y="-7" width="2.4" height="14" rx="1.2" fill="#2A1E16"/></g></g>
+        </g>
+      </svg>
+      <div class="chip-float f1"><img data-product="a1" alt="">Aquarismo</div>
+      <div class="chip-float f2"><img data-product="r1" alt="">Ração & petiscos</div>
+      <div class="chip-float f3"><img data-product="b1" alt="">Brinquedos</div>
+    </div>
+  </div>
+  <svg class="hills" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true" style="margin-top:40px;height:70px;">
+    <path d="M0 60 C 240 10 420 90 720 50 S 1200 10 1440 50 V90 H0Z" fill="var(--forest)"/>
+  </svg>
+</section>
+
+<div class="trust marquee" role="region" aria-label="Destaques da loja">
+  <div class="marquee-track">
+    <span>🏡 3 lojas em Francisco Morato</span>
+    <span>🛵 Entrega na sua casa</span>
+    <span>🔒 Dados protegidos com criptografia</span>
+    <span>🦴 Ração & petiscos</span>
+    <span>🐠 Aquarismo</span>
+    <span>🧥 Roupinhas</span>
+    <span>🎾 Brinquedos</span>
+    <span>🎣 Pesca</span>
+    <span>🌱 Jardinagem</span>
+    <span aria-hidden="true">🏡 3 lojas em Francisco Morato</span>
+    <span aria-hidden="true">🛵 Entrega na sua casa</span>
+    <span aria-hidden="true">🔒 Dados protegidos com criptografia</span>
+    <span aria-hidden="true">🦴 Ração & petiscos</span>
+    <span aria-hidden="true">🐠 Aquarismo</span>
+    <span aria-hidden="true">🧥 Roupinhas</span>
+    <span aria-hidden="true">🎾 Brinquedos</span>
+    <span aria-hidden="true">🎣 Pesca</span>
+    <span aria-hidden="true">🌱 Jardinagem</span>
+  </div>
+</div>
+
+<!-- ================= SOBRE ================= -->
+<section id="sobre">
+  <div class="wrap about">
+    <div class="reveal">
+      <span class="eyebrow"><svg><use href="#i-leaf"/></svg>Quem somos</span>
+      <h2 style="font-size:clamp(28px,3.6vw,42px);margin-top:10px;">Um cantinho verde para cuidar de quem é da família.</h2>
+      <div class="about-copy">
+        <p>A Pet Tem Home nasceu para ser aquele pet shop de confiança perto de casa. Hoje são três lojas na cidade e uma comunidade de milhares de tutores que acompanham as novidades pelo Instagram.</p>
+        <p>Além de ração e petiscos, tem tudo o que a rotina com um bicho pede: aquário para quem cuida de peixes, roupinha para o frio, brinquedo para gastar energia, artigos de pesca para o fim de semana e itens de jardinagem para o quintal.</p>
+      </div>
+      <ul class="about-list">
+        <li><i>🐶</i>Atendimento próximo, de quem conhece o seu pet pelo nome</li>
+        <li><i>🌿</i>Mix completo em um só lugar, sem rodar a cidade</li>
+        <li><i>🎁</i>Promoções e ofertas toda semana</li>
+      </ul>
+    </div>
+    <div class="about-card reveal">
+      <svg class="paw-trail" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-paw" fill="currentColor"/></svg>
+      <h3>Feito por quem ama bicho</h3>
+      <p>Cada pedido feito pelo site vira uma comanda na loja mais próxima. A equipe separa com carinho e leva até você.</p>
+      <div class="facts">
+        <div><b>3</b><span>lojas de bairro</span></div>
+        <div><b>+8,8 mil</b><span>seguidores</span></div>
+        <div><b>6</b><span>categorias</span></div>
+        <div><b>🛵</b><span>entrega local</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRODUTOS ================= -->
+<svg class="hills" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true" style="height:50px;"><path d="M0 40 C 300 0 600 60 900 30 S 1300 10 1440 30 V60 H0Z" fill="var(--bg-sunk)"/></svg>
+<section class="catalog" id="produtos">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow"><svg><use href="#i-leaf"/></svg>Nossos corredores</span>
+      <h2>Escolha, coloque na sacola e receba em casa.</h2>
+      <p>Filtre por categoria ou busque pelo nome. Para finalizar, entre na sua conta: o pedido chega na hora no painel da loja.</p>
+    </div>
+    <div class="cat-tiles" id="catTiles" role="group" aria-label="Filtrar por categoria"></div>
+    <div class="catalog-tools">
+      <p class="result-count" id="resultCount" aria-live="polite"></p>
+      <div class="tools-right">
+        <label class="sort">
+          <span class="sr-only">Ordenar produtos</span>
+          <select id="sortSelect">
+            <option value="relevancia">Em destaque</option>
+            <option value="menor">Menor preço</option>
+            <option value="maior">Maior preço</option>
+            <option value="nome">Nome (A–Z)</option>
+          </select>
+        </label>
+        <label class="search">
+          <span class="sr-only">Buscar produto</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="searchInput" type="search" placeholder="Buscar ração, aquário…" autocomplete="off">
+        </label>
+      </div>
+    </div>
+    <div class="product-grid" id="productGrid" aria-live="polite"></div>
+    <p class="price-note">Preços ilustrativos. Estoque e valores são confirmados pela loja ao aceitar o pedido.</p>
+  </div>
+</section>
+<svg class="hills flip" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true" style="height:50px;"><path d="M0 40 C 300 0 600 60 900 30 S 1300 10 1440 30 V60 H0Z" fill="var(--bg-sunk)"/></svg>
+
+<!-- ================= VITRINE 3D ================= -->
+<section id="vitrine" class="showcase-section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow"><svg><use href="#i-leaf"/></svg>Vitrine 3D</span>
+      <h2>Gire, aproxime e conheça cada detalhe.</h2>
+      <p>Arraste para girar, use a roda do mouse ou dois dedos para dar zoom e toque nos pontos brancos para ver os destaques.</p>
+    </div>
+    <div class="showcase">
+      <div class="stage-wrap">
+        <div class="stage" id="stage3d" aria-label="Modelo 3D interativo do produto selecionado">
+          <div class="stage-loader" aria-hidden="true"><span></span></div>
+          <div class="stage-tools">
+            <button type="button" class="tool-btn" id="stageReset" aria-label="Voltar à visão inicial">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+            </button>
+            <button type="button" class="tool-btn" id="stageFull" aria-label="Tela cheia">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+            </button>
+          </div>
+          <div class="stage-hint">👆 Arraste para girar · toque nos pontos</div>
+        </div>
+        <div class="model-rail" id="modelList" role="group" aria-label="Escolha o produto da vitrine"></div>
+      </div>
+      <aside class="model-info" aria-live="polite">
+        <span class="product-cat" id="modelCat"></span>
+        <h3 id="modelName">Carregando vitrine…</h3>
+        <p id="modelDesc"></p>
+        <ul class="spec-list" id="modelSpecs"></ul>
+        <div class="swatches" id="modelSwatches" hidden></div>
+        <span class="price big" id="modelPrice"></span>
+        <div class="info-actions">
+          <button type="button" class="btn btn-primary" id="modelAdd"><svg aria-hidden="true"><use href="#i-bag"/></svg>Adicionar à sacola</button>
+          <button type="button" class="btn btn-ghost" id="modelDetails">Ver detalhes</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COMO PEDIR ================= -->
+<section id="pedido" style="padding-top:20px;">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow"><svg><use href="#i-leaf"/></svg>Como pedir</span>
+      <h2>Do clique até a sua porta.</h2>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><span class="num">01</span><i>🛒</i><h3>Monte a sacola</h3><p>Escolha os produtos por categoria ou pela busca.</p></div>
+      <div class="step reveal"><span class="num">02</span><i>🔐</i><h3>Entre na sua conta</h3><p>Cadastro rápido. Senha e dados pessoais ficam criptografados.</p></div>
+      <div class="step reveal"><span class="num">03</span><i>🧾</i><h3>A loja recebe a comanda</h3><p>O pedido aparece na hora no painel da loja escolhida.</p></div>
+      <div class="step reveal"><span class="num">04</span><i>🛵</i><h3>Receba ou retire</h3><p>Acompanhe o status em "Minha conta" até a entrega.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LOJAS + MAPA ================= -->
+<svg class="hills" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true" style="height:50px;"><path d="M0 30 C 360 60 700 0 1040 30 S 1340 50 1440 20 V60 H0Z" fill="var(--bg-sunk)"/></svg>
+<section class="stores" id="lojas">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow"><svg><use href="#i-leaf"/></svg>Onde estamos</span>
+      <h2>Três lojas em Francisco Morato – SP.</h2>
+      <p>Veja as lojas no mapa, descubra a mais perto de você e abra a rota no Google Maps ou no Waze.</p>
+    </div>
+    <div class="stores-layout">
+      <div class="map-panel">
+        <div class="map-box">
+          <div id="map" role="region" aria-label="Mapa com a localização das lojas"></div>
+          <div class="map-tools">
+            <button type="button" class="tool-btn" id="mapLocate" aria-label="Mostrar a loja mais perto de mim" title="Loja mais perto de mim">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            </button>
+            <button type="button" class="tool-btn" id="mapFit" aria-label="Ver todas as lojas" title="Ver todas as lojas">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+            </button>
+          </div>
+          <div class="map-gesture" id="mapGesture" aria-hidden="true"></div>
+          <div class="map-status" id="mapStatus" role="status" aria-live="polite" hidden></div>
+        </div>
+        <p class="map-note">A posição no mapa é aproximada; as rotas usam o endereço completo. Sua localização é usada só no seu navegador, não é enviada para ninguém.</p>
+      </div>
+      <div class="store-side">
+        <button type="button" class="btn btn-primary btn-block" id="nearestBtn">📍 Encontrar a loja mais perto de mim</button>
+        <div class="store-list" id="storeList"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SOCIAL ================= -->
+<section id="social">
+  <div class="wrap">
+    <div class="social-band reveal">
+      <div>
+        <h3>@pettemhome</h3>
+        <p>Mais de 8.800 tutores acompanham promoções, bastidores e os bichinhos que passam pelas lojas.</p>
+      </div>
+      <a class="btn" href="https://www.instagram.com/pettemhome/" target="_blank" rel="noopener">Seguir no Instagram</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RODAPÉ ================= -->
+<svg class="hills" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true" style="height:64px;display:block;"><path d="M0 50 C 200 10 400 70 640 40 S 1100 0 1440 45 V80 H0Z" fill="var(--forest-deep)"/></svg>
+<footer class="site-footer" id="contato">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <span class="brand-word">Pet Tem Home<small>PET SHOP · FRANCISCO MORATO</small></span>
+        <p>Ração, aquarismo, roupinhas, brinquedos, pesca e jardinagem em três lojas de bairro, com entrega na sua casa.</p>
+      </div>
+      <div>
+        <h4>Fale conosco</h4>
+        <ul>
+          <li><a href="https://wa.me/5511934208414" target="_blank" rel="noopener">WhatsApp (11) 93420-8414</a></li>
+          <li><a href="https://www.instagram.com/pettemhome/" target="_blank" rel="noopener">Instagram @pettemhome</a></li>
+          <li><a href="login.html">Minha conta</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Lojas</h4>
+        <ul>
+          <li>Loja 1 – Jardim Santo Antônio</li>
+          <li>Loja 2 – Jardim Sílvia</li>
+          <li>Loja 3 – Francisco Morato</li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© Pet Tem Home · Francisco Morato – SP</span>
+      <a href="painel.html">Painel da loja</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ================= MENU MOBILE ================= -->
+<div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+  <div class="scrim" data-close-menu></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-label="Menu">
+    <div class="panel-head">
+      <span class="brand-word" style="color:#EEF3E6">Pet Tem Home<small style="color:#A9D77A">MENU</small></span>
+      <button type="button" class="close" id="mobileClose" aria-label="Fechar menu"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <nav aria-label="Menu mobile">
+      <a href="#top"><span>🏡</span>Início</a>
+      <a href="#sobre"><span>🌿</span>Sobre</a>
+      <a href="#produtos"><span>🛒</span>Produtos</a>
+      <a href="#vitrine"><span>🔄</span>Vitrine 3D</a>
+      <a href="#pedido"><span>🧾</span>Como pedir</a>
+      <a href="#lojas"><span>📍</span>Lojas e mapa</a>
+      <a href="login.html"><span>👤</span>Minha conta</a>
+    </nav>
+    <div>
+      <p class="label">Atalhos por categoria</p>
+      <div class="cats" id="mobileCats" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SACOLA ================= -->
+<div class="drawer" id="cartDrawer" aria-hidden="true">
+  <div class="scrim" data-close-cart></div>
+  <aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
+    <div class="sheet-head">
+      <h2 id="cartTitle">Sua sacola</h2>
+      <button type="button" class="icon-btn" data-close-cart aria-label="Fechar sacola"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sheet-body" id="cartBody"></div>
+    <div class="sheet-foot" id="cartFoot"></div>
+  </aside>
+</div>
+
+<a class="float-wa" href="https://wa.me/5511934208414?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20Pet%20Tem%20Home%20%F0%9F%90%BE" target="_blank" rel="noopener" aria-label="Chamar no WhatsApp">
+  <svg aria-hidden="true"><use href="#i-wa"/></svg><span>WhatsApp</span>
+</a>
+<!-- ================= VISUALIZAÇÃO RÁPIDA ================= -->
+<div class="qv" id="quickView" hidden>
+  <div class="qv-scrim" data-close-qv></div>
+  <div class="qv-dialog" role="dialog" aria-modal="true" aria-labelledby="qvName">
+    <button type="button" class="icon-btn qv-close" id="qvClose" data-close-qv aria-label="Fechar"><svg><use href="#i-x"/></svg></button>
+    <div class="stage qv-stage" id="qvStage" aria-label="Modelo 3D do produto">
+      <div class="stage-loader" aria-hidden="true"><span></span></div>
+      <div class="stage-tools">
+        <button type="button" class="tool-btn" id="qvReset" aria-label="Voltar à visão inicial">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        </button>
+      </div>
+      <div class="stage-hint">👆 Arraste para girar</div>
+    </div>
+    <div class="qv-body">
+      <span class="product-cat" id="qvCat"></span>
+      <h2 id="qvName"></h2>
+      <span class="price big" id="qvPrice"></span>
+      <p id="qvDesc"></p>
+      <ul class="spec-list" id="qvSpecs"></ul>
+      <div class="swatches" id="qvSwatches" hidden></div>
+      <div class="qv-buy">
+        <div class="qty big" aria-label="Quantidade">
+          <button type="button" id="qvMinus" aria-label="Diminuir">−</button>
+          <span id="qvQty">1</span>
+          <button type="button" id="qvPlus" aria-label="Aumentar">+</button>
+        </div>
+        <button type="button" class="btn btn-primary" id="qvAdd">Adicionar · <span id="qvTotal"></span></button>
+      </div>
+      <a class="qv-whats" id="qvWhats" target="_blank" rel="noopener">Tirar dúvida no WhatsApp ↗</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/crypto.js"></script>
+<script src="js/api.js"></script>
+<script src="js/3d/core.js"></script>
+<script src="js/3d/models-food.js"></script>
+<script src="js/3d/models-scene.js"></script>
+<script src="js/3d/models-outdoor.js"></script>
+<script src="js/produto3d.js"></script>
+<script src="js/main.js"></script>
+<script src="js/mapa.js"></script>
+</body>
+</html>

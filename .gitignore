@@ -1,0 +1,11 @@
+# Ambiente local
+.claude/
+.vercel/
+node_modules/
+.env
+.env.*
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini

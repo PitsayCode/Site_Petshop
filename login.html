@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minha conta — Pet Tem Home</title>
+<meta name="description" content="Entre ou crie sua conta na Pet Tem Home para fazer pedidos com entrega em Francisco Morato.">
+<meta name="theme-color" content="#2E5E3E">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="css/styles.css?v=3">
+</head>
+<body>
+
+<header class="site-header scrolled">
+  <div class="wrap nav">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="31" fill="#2E5E3E"/>
+        <path d="M10 46c8-6 16-8 22-8s14 2 22 8v4a31 31 0 0 1-44 0Z" fill="#6E9448"/>
+        <g fill="#F7F3E8" transform="translate(14 8) scale(.5625)"><path d="M32 50c-8 0-14-4.5-14-10.3 0-4 3.2-6.4 6.4-8.2 1.2-.7 1.7-1.8 1.4-3.1l-.8-3c-.5-2.1 1.6-4 3.6-3l3.2 1.5a3.2 3.2 0 0 0 2.8 0l3.2-1.5c2-1 4.1.9 3.6 3l-.8 3c-.3 1.3.2 2.4 1.4 3.1 3.2 1.8 6.4 4.2 6.4 8.2C46 45.5 40 50 32 50z"/><circle cx="23" cy="17" r="4.4"/><circle cx="41" cy="17" r="4.4"/><circle cx="12" cy="27" r="4"/><circle cx="52" cy="27" r="4"/></g>
+      </svg>
+      <span class="brand-word">Pet Tem Home<small>MINHA CONTA</small></span>
+    </a>
+    <div class="nav-actions">
+      <a class="icon-btn" href="index.html#produtos">← Voltar à loja</a>
+    </div>
+  </div>
+</header>
+
+<main class="auth-page">
+  <aside class="auth-art">
+    <div class="copy">
+      <span class="eyebrow" style="color:#A9D77A">🔒 Privacidade de verdade</span>
+      <h1 style="margin-top:12px;">Seus dados ficam trancados a sete chaves.</h1>
+      <p>Nem a equipe da loja, nem quem administra o site consegue ler sua senha ou seu cadastro.</p>
+      <ul class="lock-list">
+        <li>🔑 Senha transformada em hash irreversível (PBKDF2, 600 mil rodadas)</li>
+        <li>🧾 Cadastro cifrado com AES-256 usando uma chave que só a sua senha abre</li>
+        <li>🏪 Endereço enviado lacrado apenas para o painel da loja que vai entregar</li>
+      </ul>
+    </div>
+    <svg class="scene" viewBox="0 0 600 220" aria-hidden="true">
+      <path d="M0 120 Q150 60 300 110 T600 90 V220 H0Z" fill="#3E7B4F"/>
+      <path d="M0 160 Q200 110 420 150 T600 140 V220 H0Z" fill="#6E9448"/>
+      <g><rect x="92" y="70" width="12" height="70" rx="5" fill="#7A5236"/><circle cx="98" cy="62" r="34" fill="#2E5E3E"/></g>
+      <g><rect x="488" y="80" width="10" height="60" rx="5" fill="#7A5236"/><circle cx="493" cy="72" r="28" fill="#35694A"/></g>
+      <text x="300" y="175" font-size="46" text-anchor="middle">🐕‍🦺 🐈</text>
+    </svg>
+  </aside>
+
+  <div class="auth-main">
+    <div class="auth-card">
+
+      <div class="form-msg ok" id="checkoutBanner">🧺 Sua sacola está guardada. Entre ou crie sua conta para finalizar o pedido.</div>
+
+      <!-- ===== Entrar / Criar conta ===== -->
+      <section id="authView" hidden style="padding:0;">
+        <div class="tabs" id="tabs" role="tablist" data-active="0">
+          <span class="tab-pill" aria-hidden="true"></span>
+          <button type="button" role="tab" id="tabLogin" aria-selected="true" aria-controls="loginForm">Entrar</button>
+          <button type="button" role="tab" id="tabSignup" aria-selected="false" aria-controls="signupForm">Criar conta</button>
+        </div>
+
+        <form id="loginForm" role="tabpanel" aria-labelledby="tabLogin" novalidate>
+          <h2>Que bom te ver de novo!</h2>
+          <p class="lead">Entre para pedir e acompanhar suas entregas.</p>
+          <div class="form-msg" role="alert" data-msg></div>
+          <div class="field">
+            <label for="loginEmail">E-mail</label>
+            <input id="loginEmail" name="email" type="email" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="loginPassword">Senha</label>
+            <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+          <p class="hint" style="margin-top:14px;">Esqueceu a senha? Por segurança ela não pode ser recuperada: como só você tem a chave, será preciso criar uma conta nova.</p>
+        </form>
+
+        <form id="signupForm" role="tabpanel" aria-labelledby="tabSignup" novalidate hidden>
+          <h2>Crie sua conta</h2>
+          <p class="lead">Leva um minutinho. Usamos seus dados só para entregar seus pedidos.</p>
+          <div class="form-msg" role="alert" data-msg></div>
+
+          <fieldset>
+            <legend>Seus dados</legend>
+            <div class="field"><label for="suName">Nome completo</label><input id="suName" name="name" autocomplete="name" required></div>
+            <div class="field-row">
+              <div class="field"><label for="suEmail">E-mail</label><input id="suEmail" name="email" type="email" autocomplete="email" required></div>
+              <div class="field"><label for="suPhone">Celular / WhatsApp</label><input id="suPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 90000-0000" required></div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Endereço de entrega</legend>
+            <div class="field-row r3">
+              <div class="field"><label for="suStreet">Rua</label><input id="suStreet" name="street" autocomplete="address-line1" required></div>
+              <div class="field"><label for="suNumber">Número</label><input id="suNumber" name="number" inputmode="numeric" required></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label for="suComplement">Complemento</label><input id="suComplement" name="complement" autocomplete="address-line2"></div>
+              <div class="field"><label for="suDistrict">Bairro</label><input id="suDistrict" name="district" required></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label for="suCep">CEP</label><input id="suCep" name="cep" inputmode="numeric" autocomplete="postal-code" placeholder="07900-000"></div>
+              <div class="field"><label for="suCity">Cidade</label><input id="suCity" name="city" value="Francisco Morato – SP" autocomplete="address-level2"></div>
+            </div>
+            <div class="field"><label for="suRef">Ponto de referência</label><input id="suRef" name="reference" placeholder="Ex.: portão verde, ao lado da padaria"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Senha</legend>
+            <div class="field">
+              <label for="suPassword">Crie uma senha</label>
+              <input id="suPassword" name="password" type="password" autocomplete="new-password" minlength="8" required aria-describedby="pwHint">
+              <div class="pw-meter" aria-hidden="true"><i id="pwBar"></i></div>
+              <span class="hint" id="pwHint">Mínimo de 8 caracteres, com letras e números.</span>
+            </div>
+            <div class="field"><label for="suPassword2">Repita a senha</label><input id="suPassword2" name="password2" type="password" autocomplete="new-password" required></div>
+          </fieldset>
+
+          <label class="hint" style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 16px;font-size:13.5px;">
+            <input type="checkbox" name="consent" required style="margin-top:4px;width:18px;height:18px;">
+            Autorizo o uso dos meus dados apenas para entrega e atendimento dos meus pedidos, conforme a LGPD.
+          </label>
+          <button class="btn btn-primary btn-block" type="submit">Criar conta</button>
+        </form>
+      </section>
+
+      <!-- ===== Minha conta ===== -->
+      <section id="accountView" hidden style="padding:0;">
+        <h2 id="helloName">Olá!</h2>
+        <p class="lead">Seus pedidos e seu endereço de entrega.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px;">
+          <a class="btn btn-primary" href="index.html#produtos">Fazer um pedido</a>
+          <button type="button" class="btn btn-ghost" id="logoutBtn">Sair</button>
+        </div>
+
+        <h3 style="font-size:22px;">Meus pedidos</h3>
+        <div class="orders-list" id="ordersList"></div>
+
+        <form id="profileForm" novalidate style="margin-top:36px;">
+          <h3 style="font-size:22px;margin-bottom:14px;">Dados de entrega</h3>
+          <div class="form-msg" role="alert" data-msg></div>
+          <div class="field"><label for="pfName">Nome completo</label><input id="pfName" name="name" autocomplete="name"></div>
+          <div class="field-row">
+            <div class="field"><label for="pfEmail">E-mail</label><input id="pfEmail" name="email" type="email" readonly></div>
+            <div class="field"><label for="pfPhone">Celular</label><input id="pfPhone" name="phone" type="tel"></div>
+          </div>
+          <div class="field-row r3">
+            <div class="field"><label for="pfStreet">Rua</label><input id="pfStreet" name="street"></div>
+            <div class="field"><label for="pfNumber">Número</label><input id="pfNumber" name="number"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="pfComplement">Complemento</label><input id="pfComplement" name="complement"></div>
+            <div class="field"><label for="pfDistrict">Bairro</label><input id="pfDistrict" name="district"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="pfCep">CEP</label><input id="pfCep" name="cep"></div>
+            <div class="field"><label for="pfCity">Cidade</label><input id="pfCity" name="city"></div>
+          </div>
+          <div class="field"><label for="pfRef">Ponto de referência</label><input id="pfRef" name="reference"></div>
+          <button class="btn btn-ghost btn-block" type="submit">Salvar alterações</button>
+          <p class="secure-note">🔒 Salvo criptografado com a chave da sua senha.</p>
+        </form>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/config.js"></script>
+<script src="js/crypto.js"></script>
+<script src="js/api.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>
