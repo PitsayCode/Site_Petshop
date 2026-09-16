@@ -171,12 +171,18 @@
     return { v: 1, alg: "PBKDF2-SHA256+AES-256-GCM", iterations: PBKDF2_ITERATIONS, salt: toB64(salt), iv: toB64(iv), ct: toB64(ct) };
   }
 
-  // Devolve a chave privada como CryptoKey NÃO exportável (lança erro se a senha estiver errada)
-  async function unwrapPrivateKey(box, passphrase) {
+  // Abre o cofre e devolve os bytes da chave (lança erro se a senha estiver errada).
+  // Os bytes só são usados na hora, para gerar outra cópia cifrada (ex.: com o
+  // código da equipe); eles nunca são guardados.
+  async function openVaultKey(box, passphrase) {
     assertSupport();
     var key = await passphraseKey(passphrase, fromB64(box.salt), box.iterations || PBKDF2_ITERATIONS);
-    var pkcs8 = await subtle.decrypt({ name: "AES-GCM", iv: fromB64(box.iv) }, key, fromB64(box.ct));
-    return subtle.importKey("pkcs8", pkcs8, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
+    return subtle.decrypt({ name: "AES-GCM", iv: fromB64(box.iv) }, key, fromB64(box.ct));
+  }
+
+  // Devolve a chave privada como CryptoKey NÃO exportável
+  async function unwrapPrivateKey(box, passphrase) {
+    return importPrivatePkcs8(await openVaultKey(box, passphrase));
   }
 
   function importPrivatePkcs8(pkcs8) {
@@ -225,6 +231,7 @@
     openSealed: openSealed,
     generateVaultKeyPair: generateVaultKeyPair,
     wrapPrivateKey: wrapPrivateKey,
+    openVaultKey: openVaultKey,
     unwrapPrivateKey: unwrapPrivateKey,
     importPrivatePkcs8: importPrivatePkcs8,
     publicKeyFingerprint: publicKeyFingerprint,

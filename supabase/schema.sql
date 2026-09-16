@@ -229,6 +229,157 @@ begin
 end $$;
 
 -- =====================================================================
+-- ACESSO DA EQUIPE POR CÓDIGO
+--
+-- O gestor entra com e-mail e senha (conta mestre). Os funcionários entram
+-- digitando só um CÓDIGO, definido pelo gestor.
+--
+-- A chave do cofre fica guardada em DUAS cópias cifradas:
+--   encrypted_private_key -> abre com a senha do cofre (gestor)
+--   key_for_code          -> abre com o código da equipe (funcionários)
+-- Assim o gestor troca o código quando quiser, mesmo sem lembrar do antigo.
+-- =====================================================================
+
+alter table public.store_vault add column if not exists key_for_code jsonb;
+alter table public.store_vault add column if not exists code_hash    text;
+alter table public.store_vault add column if not exists code_set_at  timestamptz;
+
+-- Tentativas de código (freio contra tentativa e erro em massa)
+create table if not exists public.code_attempts (
+  id bigint generated always as identity primary key,
+  at timestamptz not null default now(),
+  ok boolean not null
+);
+alter table public.code_attempts enable row level security;
+revoke all on public.code_attempts from anon, authenticated;
+
+create or replace function public.check_code(p_code text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  h text;
+  fails int;
+begin
+  select count(*) into fails from public.code_attempts
+    where ok = false and at > now() - interval '15 minutes';
+  if fails >= 20 then
+    raise exception 'Muitas tentativas seguidas. Aguarde alguns minutos.' using errcode = '55000';
+  end if;
+
+  select code_hash into h from public.store_vault where id = 1;
+  if h is null or p_code is null or crypt(p_code, h) <> h then
+    insert into public.code_attempts (ok) values (false);
+    return false;
+  end if;
+
+  insert into public.code_attempts (ok) values (true);
+  delete from public.code_attempts where at < now() - interval '1 day';
+  return true;
+end $$;
+
+-- O gestor define ou troca o código (e a cópia da chave cifrada com ele)
+create or replace function public.set_staff_code(p_code text, p_key_for_code jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_staff() then
+    raise exception 'Apenas a equipe da loja pode definir o código.' using errcode = '42501';
+  end if;
+  if p_code is null then
+    update public.store_vault set code_hash = null, key_for_code = null, code_set_at = null where id = 1;
+    return;
+  end if;
+  if length(p_code) < 8 then
+    raise exception 'O código precisa ter pelo menos 8 caracteres.' using errcode = '22023';
+  end if;
+  update public.store_vault
+     set code_hash = crypt(p_code, gen_salt('bf', 10)),
+         key_for_code = p_key_for_code,
+         code_set_at = now()
+   where id = 1;
+end $$;
+
+-- Funções usadas pelo painel quando o acesso é por código
+create or replace function public.painel_vault(p_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v public.store_vault;
+begin
+  if not public.check_code(p_code) then return null; end if;
+  select * into v from public.store_vault where id = 1;
+  return jsonb_build_object('public_jwk', v.public_jwk, 'key_for_code', v.key_for_code);
+end $$;
+
+create or replace function public.painel_requests(p_code text)
+returns setof public.requests
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.check_code(p_code) then
+    raise exception 'Código incorreto.' using errcode = '28000';
+  end if;
+  return query select * from public.requests order by created_at desc limit 500;
+end $$;
+
+create or replace function public.painel_customers(p_code text)
+returns setof public.customers
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.check_code(p_code) then
+    raise exception 'Código incorreto.' using errcode = '28000';
+  end if;
+  return query select * from public.customers order by created_at desc limit 1000;
+end $$;
+
+create or replace function public.painel_set_status(p_code text, p_id uuid, p_status public.request_status)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.check_code(p_code) then
+    raise exception 'Código incorreto.' using errcode = '28000';
+  end if;
+  update public.requests set status = p_status, seen_by_store = true where id = p_id;
+end $$;
+
+create or replace function public.painel_mark_seen(p_code text, p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.check_code(p_code) then
+    raise exception 'Código incorreto.' using errcode = '28000';
+  end if;
+  update public.requests set seen_by_store = true where id = p_id;
+end $$;
+
+revoke execute on function public.check_code(text) from anon, authenticated;
+grant execute on function public.painel_vault(text) to anon, authenticated;
+grant execute on function public.painel_requests(text) to anon, authenticated;
+grant execute on function public.painel_customers(text) to anon, authenticated;
+grant execute on function public.painel_set_status(text, uuid, public.request_status) to anon, authenticated;
+grant execute on function public.painel_mark_seen(text, uuid) to anon, authenticated;
+grant execute on function public.set_staff_code(text, jsonb) to authenticated;
+
+-- =====================================================================
 -- DEPOIS DE RODAR: dar acesso ao painel para a conta da loja
 --
 -- 1. Crie a conta da loja normalmente em /login (ou em Authentication →

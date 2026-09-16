@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0C120D">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=7">
+<link rel="stylesheet" href="css/styles.css?v=11">
 <style>
   body{background:var(--bg-sunk);min-height:100vh;}
   .gate{min-height:100vh;display:grid;place-items:center;padding:24px 16px;}
@@ -103,16 +103,38 @@
 
 <!-- ===== login da equipe ===== -->
 <div class="gate" id="gateLogin" hidden>
-  <form class="gate-card" id="staffForm" novalidate>
+  <div class="gate-card">
     <span class="gate-icon" aria-hidden="true">🏪</span>
     <h1>Painel da loja</h1>
     <p class="lead">Acesso exclusivo da equipe Pet Tem Home.</p>
-    <div class="form-msg" role="alert" data-msg></div>
-    <div class="field"><label for="staffEmail">E-mail da equipe</label><input id="staffEmail" name="email" type="email" autocomplete="username" required></div>
-    <div class="field"><label for="staffPassword">Senha</label><input id="staffPassword" name="password" type="password" autocomplete="current-password" required></div>
-    <button class="btn btn-primary btn-block" type="submit">Entrar no painel</button>
+
+    <div class="tabs" id="accessTabs" data-active="0" role="tablist">
+      <span class="tab-pill" aria-hidden="true"></span>
+      <button type="button" role="tab" id="tabCode" aria-selected="true">Sou da equipe</button>
+      <button type="button" role="tab" id="tabManager" aria-selected="false">Sou o gestor</button>
+    </div>
+
+    <form id="codeForm" novalidate>
+      <div class="form-msg" role="alert" data-msg></div>
+      <div class="field">
+        <label for="accessCode">Código do painel</label>
+        <input id="accessCode" name="code" type="password" autocomplete="off" required>
+        <span class="hint">O gestor da loja informa esse código.</span>
+      </div>
+      <label class="check"><input type="checkbox" name="remember" id="codeRemember">Manter conectado neste computador</label>
+      <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+    </form>
+
+    <form id="staffForm" novalidate hidden>
+      <div class="form-msg" role="alert" data-msg></div>
+      <div class="field"><label for="staffEmail">E-mail do gestor</label><input id="staffEmail" name="email" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="staffPassword">Senha</label><input id="staffPassword" name="password" type="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary btn-block" type="submit">Entrar como gestor</button>
+      <p style="margin-top:14px;text-align:center;"><button type="button" class="link-btn" id="forgotStaff">Esqueci minha senha</button></p>
+    </form>
+
     <p class="hint" style="margin-top:14px;">Clientes: acessem <a href="login.html" style="color:var(--leaf)">Minha conta</a>.</p>
-  </form>
+  </div>
 </div>
 
 <!-- ===== cofre da loja ===== -->
@@ -123,7 +145,7 @@
     <p class="lead" id="vaultLead">Digite a senha do cofre para ver os dados dos clientes e das solicitações.</p>
     <div class="warn" id="vaultWarn" hidden>Guarde essa senha em lugar seguro. Sem ela, ninguém (nem o desenvolvedor) consegue abrir os dados. Ela não pode ser recuperada.</div>
     <div class="form-msg" role="alert" data-msg></div>
-    <div class="field"><label for="vaultPass">Senha do cofre</label><input id="vaultPass" name="pass" type="password" autocomplete="off" required></div>
+    <div class="field"><label for="vaultPass">Senha do cofre</label><input id="vaultPass" name="pass" type="password" autocomplete="off" required><span class="hint" id="vaultHint">Esqueceu? O código da equipe também abre, e depois você redefine a senha em Ajustes.</span></div>
     <div class="field" id="vaultConfirmField" hidden><label for="vaultPass2">Repita a senha do cofre</label><input id="vaultPass2" name="pass2" type="password" autocomplete="off"></div>
     <label class="check"><input type="checkbox" name="remember" id="vaultRemember">Manter o cofre aberto neste computador (use só no computador da loja)</label>
     <button class="btn btn-primary btn-block" type="submit" id="vaultBtn">Abrir cofre</button>
@@ -153,6 +175,7 @@
     <div class="main-tabs chips" role="tablist">
       <button type="button" class="chip" role="tab" data-view="requests" aria-pressed="true">📦 Solicitações</button>
       <button type="button" class="chip" role="tab" data-view="customers" aria-pressed="false">👨‍💼 Clientes</button>
+      <button type="button" class="chip" role="tab" data-view="settings" id="tabSettings" aria-pressed="false" hidden>⚙️ Ajustes</button>
     </div>
   </header>
 
@@ -182,15 +205,54 @@
       </div>
       <div class="cust-grid" id="customers"></div>
     </section>
+
+    <!-- ajustes (só o gestor) -->
+    <section id="viewSettings" hidden>
+      <div class="cust-grid">
+        <form class="cust" id="codeSetForm" novalidate>
+          <h3>🔑 Código da equipe</h3>
+          <p class="hint" id="codeInfo"></p>
+          <div class="form-msg" role="alert" data-msg></div>
+          <div class="field">
+            <label for="newCode">Novo código (mínimo 8 caracteres)</label>
+            <input id="newCode" name="code" type="text" autocomplete="off">
+            <span class="hint">Os funcionários entram no painel digitando só esse código.</span>
+          </div>
+          <div class="field">
+            <label for="codeVaultPass">Sua senha do cofre</label>
+            <input id="codeVaultPass" name="pass" type="password" autocomplete="off">
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">Salvar código</button>
+          <button class="btn btn-ghost btn-block" type="button" id="disableCode" style="margin-top:8px;">Desativar acesso por código</button>
+        </form>
+
+        <form class="cust" id="vaultPassForm" novalidate>
+          <h3>🔐 Senha do cofre</h3>
+          <p class="hint">Troca a senha mantendo a mesma chave, então o histórico continua legível.</p>
+          <div class="form-msg" role="alert" data-msg></div>
+          <div class="field"><label for="vpCurrent">Senha atual do cofre <small>(ou o código da equipe)</small></label><input id="vpCurrent" name="current" type="password" autocomplete="off"></div>
+          <div class="field"><label for="vpNext">Nova senha (mínimo 10 caracteres)</label><input id="vpNext" name="next" type="password" autocomplete="off"></div>
+          <button class="btn btn-primary btn-block" type="submit">Trocar senha do cofre</button>
+        </form>
+
+        <form class="cust" id="loginPassForm" novalidate>
+          <h3>✉️ Senha de login do gestor</h3>
+          <p class="hint">É a senha que você usa com seu e-mail para entrar no painel.</p>
+          <div class="form-msg" role="alert" data-msg></div>
+          <div class="field"><label for="lpNext">Nova senha</label><input id="lpNext" name="password" type="password" autocomplete="new-password"></div>
+          <button class="btn btn-primary btn-block" type="submit">Trocar senha de login</button>
+        </form>
+      </div>
+    </section>
   </main>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="js/config.js"></script>
-<script src="js/crypto.js"></script>
+<script src="js/config.js?v=11"></script>
+<script src="js/crypto.js?v=11"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
-<script src="js/api.js"></script>
-<script src="js/painel.js"></script>
+<script src="js/api.js?v=11"></script>
+<script src="js/painel.js?v=11"></script>
 </body>
 </html>

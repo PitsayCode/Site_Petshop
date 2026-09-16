@@ -110,6 +110,7 @@
     stopLive();
     show("gateLoading");
     try {
+      if (await API.codeRemembered()) { startDashboard(); return; }
       var session = await API.staffSession();
       if (!session) { show("gateLogin"); return; }
       if (!session.isStaff) {
@@ -129,6 +130,55 @@
       showMsg($("#staffForm"), err.message);
     }
   }
+
+  // abas de acesso: equipe (código) x gestor (e-mail e senha)
+  (function accessTabs() {
+    var tabs = $("#accessTabs");
+    function pick(index) {
+      tabs.setAttribute("data-active", String(index));
+      $("#tabCode").setAttribute("aria-selected", index === 0 ? "true" : "false");
+      $("#tabManager").setAttribute("aria-selected", index === 1 ? "true" : "false");
+      $("#codeForm").hidden = index !== 0;
+      $("#staffForm").hidden = index !== 1;
+    }
+    $("#tabCode").addEventListener("click", function () { pick(0); });
+    $("#tabManager").addEventListener("click", function () { pick(1); });
+  })();
+
+  $("#codeForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var form = e.target, btn = $("button[type=submit]", form);
+    clearMsg(form);
+    btn.disabled = true;
+    btn.textContent = "Abrindo…";
+    try {
+      await API.codeUnlock(form.elements.code.value, form.elements.remember.checked);
+      form.reset();
+      startDashboard();
+    } catch (err) {
+      showMsg(form, err.message);
+      form.elements.code.value = "";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Entrar";
+    }
+  });
+
+  $("#forgotStaff").addEventListener("click", async function () {
+    var form = $("#staffForm");
+    var email = form.elements.email.value.trim();
+    clearMsg(form);
+    if (!email) { showMsg(form, "Digite o e-mail do gestor para receber o link."); return; }
+    this.disabled = true;
+    try {
+      await API.requestPasswordReset(email);
+      showMsg(form, "Se existir uma conta com esse e-mail, o link para criar a nova senha chega em alguns minutos. Confira também o spam.", "ok");
+    } catch (err) {
+      showMsg(form, err.message);
+    } finally {
+      this.disabled = false;
+    }
+  });
 
   $("#staffForm").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -160,6 +210,8 @@
     $("#vaultConfirmField").hidden = !creating;
     $("#vaultBtn").textContent = creating ? "Criar cofre e entrar" : "Abrir cofre";
     $("#vaultPass").autocomplete = creating ? "new-password" : "off";
+    var hint = document.getElementById("vaultHint");
+    if (hint) hint.hidden = creating;
   }
 
   $("#vaultForm").addEventListener("submit", async function (e) {
@@ -205,9 +257,14 @@
   });
 
   // ================= painel =================
-  function startDashboard() {
+  async function startDashboard() {
     show("dashboard");
     $("#demoBar").hidden = API.mode !== "demo";
+    var session = await API.staffSession();
+    var isManager = !!(session && session.manager);
+    $("#tabSettings").hidden = !isManager;
+    $("#staffEmailLabel").textContent = session ? "· " + session.email : "";
+    if (isManager) paintCodeInfo();
     refresh();
     state.unsub = API.subscribe(scheduleRefresh);
     state.timer = setInterval(refresh, 20000);
@@ -274,6 +331,7 @@
       $$("[data-view]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
       $("#viewRequests").hidden = state.view !== "requests";
       $("#viewCustomers").hidden = state.view !== "customers";
+      $("#viewSettings").hidden = state.view !== "settings";
       if (state.view === "customers") {
         $("#customers").textContent = "Carregando clientes…";
         try {
@@ -281,6 +339,74 @@
           renderCustomers();
         } catch (err) { $("#customers").textContent = err.message; }
       }
+      if (state.view === "settings") paintCodeInfo();
+    });
+  });
+
+  // ---------- ajustes do gestor ----------
+  async function paintCodeInfo() {
+    try {
+      var info = await API.staffCodeInfo();
+      $("#codeInfo").textContent = info.enabled
+        ? "Acesso por código ativo" + (info.setAt ? " desde " + dateOnly.format(info.setAt) : "") + "."
+        : "Acesso por código desativado: hoje só o gestor entra no painel.";
+    } catch (e) { $("#codeInfo").textContent = ""; }
+  }
+
+  async function submitSettings(form, label, fn) {
+    var btn = $("button[type=submit]", form), original = btn.textContent;
+    clearMsg(form);
+    btn.disabled = true;
+    btn.textContent = label;
+    try {
+      await fn();
+    } catch (err) {
+      showMsg(form, err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+
+  $("#codeSetForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var form = e.target;
+    submitSettings(form, "Salvando…", async function () {
+      await API.setStaffCode(form.elements.code.value, form.elements.pass.value);
+      form.reset();
+      showMsg(form, "Código salvo. Avise a equipe: é com ele que eles entram no painel.", "ok");
+      paintCodeInfo();
+    });
+  });
+
+  $("#disableCode").addEventListener("click", async function () {
+    if (!window.confirm("Desativar o acesso por código? Os funcionários não vão mais conseguir entrar até você criar um novo código.")) return;
+    var form = $("#codeSetForm");
+    clearMsg(form);
+    try {
+      await API.setStaffCode(null);
+      showMsg(form, "Acesso por código desativado.", "ok");
+      paintCodeInfo();
+    } catch (err) { showMsg(form, err.message); }
+  });
+
+  $("#vaultPassForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var form = e.target;
+    submitSettings(form, "Trocando…", async function () {
+      await API.changeVaultPassphrase(form.elements.current.value, form.elements.next.value);
+      form.reset();
+      showMsg(form, "Senha do cofre trocada. O histórico continua acessível.", "ok");
+    });
+  });
+
+  $("#loginPassForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var form = e.target;
+    submitSettings(form, "Trocando…", async function () {
+      await API.updatePassword(form.elements.password.value);
+      form.reset();
+      showMsg(form, "Senha de login trocada.", "ok");
     });
   });
 

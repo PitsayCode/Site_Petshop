@@ -10,7 +10,7 @@ administrativo exclusivo da loja.
 - 📝 Formulário de solicitação: pedido de produtos, encomenda, orçamento ou dúvida
 - 📦 Número sequencial da solicitação (#0001, #0002…)
 - 🕐 Data e horário registrados pelo servidor, inclusive de cada mudança de status
-- 📊 Painel administrativo só para a equipe da loja
+- 📊 Painel administrativo só para a loja: gestor entra com e-mail e senha, funcionários com um código
 - 🔴 Novas solicitações destacadas, com contador e aviso sonoro
 - 🔄 Status: Pendente → Em andamento → Concluído
 - 🔔 Atualização automática (tempo real + checagem a cada 20 s)
@@ -86,25 +86,57 @@ Faça commit e push para o GitHub.
 2. Framework Preset: **Other**. Build Command e Output Directory: deixe em branco.
 3. Clique em **Deploy**. Cada push no GitHub atualiza o site sozinho.
 
-### 5. Criar o acesso da loja
-1. Acesse `/login` no site publicado e crie a conta da loja (ex.: `loja@pettemhome.com.br`).
-   Não precisa preencher endereço de verdade; ou crie em **Authentication → Users → Add user**.
+### 5. Criar o acesso do gestor
+1. Acesse `/login` no site publicado e crie a conta do gestor com o **e-mail mestre**
+   (ex.: `gestor@gmail.com`). Também dá para criar em **Authentication → Users → Add user**.
 2. No **SQL Editor** do Supabase, rode (trocando o e-mail):
 
 ```sql
 insert into public.staff (user_id, name)
-select id, 'Pet Tem Home' from auth.users where email = 'loja@pettemhome.com.br'
+select id, 'Pet Tem Home' from auth.users where email = 'gestor@gmail.com'
 on conflict (user_id) do nothing;
 ```
 
-3. Acesse `/painel`, entre com essa conta e **crie a senha do cofre**.
-
-> ⚠️ **A senha do cofre não pode ser recuperada.** Ela abre os dados de todos
-> os clientes. Guarde num gerenciador de senhas. Se perder, os cadastros e
-> solicitações antigos ficam ilegíveis para sempre.
+3. Acesse `/painel` → aba **Sou o gestor** → entre com esse e-mail.
+4. **Crie a senha do cofre** (é ela que abre os dados dos clientes).
+5. No painel, abra **⚙️ Ajustes → Código da equipe** e defina o código que os
+   funcionários vão usar.
 
 Pronto: clientes se cadastram em `/login`, enviam em `/solicitacao` e a loja
 acompanha em `/painel`.
+
+---
+
+## Quem entra no painel
+
+| Quem | Como entra | Pode |
+|---|---|---|
+| **Gestor** | Aba "Sou o gestor": e-mail mestre + senha | Tudo: ver e mudar solicitações, ver clientes, definir o código da equipe, trocar a senha do cofre e a própria senha |
+| **Funcionário** | Aba "Sou da equipe": só o código | Ver e mudar o status das solicitações e ver os clientes. Não mexe em ajustes |
+
+O código é uma senha compartilhada: **troque sempre que alguém sair da equipe**.
+O gestor troca em ⚙️ Ajustes, e o código antigo para de funcionar na hora.
+
+## Esqueci a senha — o que fazer
+
+| Situação | Solução |
+|---|---|
+| Funcionário esqueceu o código | O gestor abre ⚙️ Ajustes e define um novo código |
+| Gestor esqueceu a senha de login | Tela do painel → aba "Sou o gestor" → **Esqueci minha senha** (chega um link no e-mail) |
+| Gestor esqueceu a senha do cofre | Na tela do cofre, digite o **código da equipe** (ele também abre) e depois redefina a senha em ⚙️ Ajustes |
+| Gestor perdeu o acesso ao e-mail | Fale com quem cuida do site: em **Supabase → Authentication → Users** dá para trocar o e-mail ou enviar nova senha. Os dados continuam legíveis, desde que alguém saiba a senha do cofre ou o código |
+| Perderam a senha do cofre **e** o código | Não há como recuperar os dados antigos: é o preço de ninguém mais conseguir lê-los. Para recomeçar, apague o cofre e crie outro. As solicitações e cadastros antigos ficam ilegíveis para sempre |
+
+Para recomeçar o cofre do zero (último caso da tabela), no SQL Editor:
+
+```sql
+delete from public.store_vault where id = 1;
+```
+
+Depois abra `/painel` como gestor e crie um cofre novo.
+
+> ⚠️ A senha do cofre e o código não ficam guardados em lugar nenhum: nem no
+> Supabase, nem com o desenvolvedor. Anote os dois num gerenciador de senhas.
 
 ---
 
@@ -113,6 +145,7 @@ acompanha em `/painel`.
 | Dado | Proteção | Quem consegue ler |
 |---|---|---|
 | Senha do cliente | Hash (Supabase Auth, bcrypt) | Ninguém |
+| Código da equipe | Hash bcrypt no banco; tentativas limitadas (20 erros a cada 15 min) | Ninguém |
 | Nome, telefone, endereço | Cifrados no navegador e lacrados para a chave da loja | Só o painel com a senha do cofre, e o próprio cliente |
 | Detalhes da solicitação | Idem | Só o painel e o próprio cliente |
 | E-mail | Necessário para login e recuperação de senha | Supabase Auth |
@@ -122,6 +155,8 @@ acompanha em `/painel`.
 - **O que o dono do banco vê:** quem abre o Supabase vê apenas texto cifrado nos dados pessoais.
 - **Limite importante:** a criptografia protege os dados guardados, não um site adulterado. Proteja o acesso ao GitHub, à Vercel e ao Supabase com senha forte e verificação em duas etapas.
 - **Trocar a senha pelo "esqueci minha senha":** o cliente confirma os dados de novo, porque a cópia cifrada com a senha antiga não abre mais.
+- **Duas cópias da chave do cofre:** uma abre com a senha do gestor, outra com o código da equipe. As duas ficam cifradas no banco; nenhuma abre sem o segredo correspondente.
+- **Acesso por código:** as consultas do painel passam por funções do banco que conferem o código a cada chamada, com limite de tentativas. Sem código válido, o banco não devolve nada.
 
 ## Mapa das lojas
 
@@ -147,4 +182,4 @@ Se o site ficar muito movimentado, vale contratar um serviço próprio de mapas
 
 - Produtos e preços: `js/data.js`
 - Lojas, coordenadas do mapa e WhatsApp: `js/config.js`
-- Ao alterar o CSS, aumente o número em `styles.css?v=7` nos arquivos HTML.
+- Ao alterar CSS ou JS, aumente o número de versão (`?v=11`) nos arquivos HTML: é o que evita o navegador usar a versão antiga guardada em cache.

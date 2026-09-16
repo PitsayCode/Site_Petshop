@@ -160,6 +160,47 @@
     },
     getVault: async function () { return readLS(DK.vault, null); },
     insertVault: async function (row) { writeLS(DK.vault, row); },
+    updateVault: async function (patch) { writeLS(DK.vault, Object.assign(readLS(DK.vault, {}), patch)); },
+    setStaffCode: async function (code, keyForCode) {
+      var v = readLS(DK.vault, null);
+      if (!v) throw fail("MISSING", "O cofre ainda não foi criado.");
+      if (!code) { v.code_verifier = null; v.code_salt = null; v.key_for_code = null; v.code_set_at = null; }
+      else {
+        var salt = C.randomSalt();
+        v.code_salt = salt;
+        v.code_verifier = (await C.deriveUserKeys(code, salt)).verifier;
+        v.key_for_code = keyForCode;
+        v.code_set_at = iso();
+      }
+      writeLS(DK.vault, v);
+    },
+    checkCode: async function (code) {
+      var v = readLS(DK.vault, null);
+      if (!v || !v.code_verifier) return false;
+      var keys = await C.deriveUserKeys(code || "", v.code_salt);
+      return C.safeEqual(keys.verifier, v.code_verifier);
+    },
+    rpcVault: async function (code) {
+      if (!(await demo.checkCode(code))) return null;
+      var v = readLS(DK.vault, null);
+      return { public_jwk: v.public_jwk, key_for_code: v.key_for_code };
+    },
+    rpcRequests: async function (code) {
+      if (!(await demo.checkCode(code))) throw fail("WRONG_CODE", "Código incorreto.");
+      return demo.listRequests();
+    },
+    rpcCustomers: async function (code) {
+      if (!(await demo.checkCode(code))) throw fail("WRONG_CODE", "Código incorreto.");
+      return demo.listCustomers();
+    },
+    rpcSetStatus: async function (code, id, status) {
+      if (!(await demo.checkCode(code))) throw fail("WRONG_CODE", "Código incorreto.");
+      return demo.updateRequest(id, { status: status, seen_by_store: true });
+    },
+    rpcMarkSeen: async function (code, id) {
+      if (!(await demo.checkCode(code))) throw fail("WRONG_CODE", "Código incorreto.");
+      return demo.updateRequest(id, { seen_by_store: true });
+    },
     getStorePublicKey: async function () { var v = readLS(DK.vault, null); return v ? v.public_jwk : null; },
     isStaff: async function () { return true; },
     subscribe: function (cb) { return onChange(cb); }
@@ -234,6 +275,17 @@
       return must(await sb.from("store_vault").select("*").eq("id", 1).maybeSingle());
     },
     insertVault: async function (row) { must(await sb.from("store_vault").insert(Object.assign({ id: 1 }, row))); },
+    updateVault: async function (patch) { must(await sb.from("store_vault").update(patch).eq("id", 1)); },
+    setStaffCode: async function (code, keyForCode) {
+      must(await sb.rpc("set_staff_code", { p_code: code, p_key_for_code: keyForCode }));
+    },
+    rpcVault: async function (code) { return must(await sb.rpc("painel_vault", { p_code: code })); },
+    rpcRequests: async function (code) { return must(await sb.rpc("painel_requests", { p_code: code })); },
+    rpcCustomers: async function (code) { return must(await sb.rpc("painel_customers", { p_code: code })); },
+    rpcSetStatus: async function (code, id, status) {
+      must(await sb.rpc("painel_set_status", { p_code: code, p_id: id, p_status: status }));
+    },
+    rpcMarkSeen: async function (code, id) { must(await sb.rpc("painel_mark_seen", { p_code: code, p_id: id })); },
     getStorePublicKey: async function () { return must(await sb.rpc("store_public_key")); },
     isStaff: async function (uid) {
       return !!must(await sb.from("staff").select("user_id").eq("user_id", uid).maybeSingle());
@@ -479,26 +531,46 @@
   // ================= loja =================
   var storeKey = null;
   var openCache = {};
+  var accessMode = null;          // "manager" (gestor) ou "code" (equipe)
+  var staffCode = null;           // código digitado pela equipe, usado nas consultas
+  var CODE_REMEMBER = "ptm2_panel_code";
+
+  var PANEL_DEMO = "ptm2_panel";
 
   async function staffLogin(email, password) {
-    if (MODE === "demo") return;
+    if (MODE === "demo") {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""))) {
+        throw fail("VALIDATION", "Informe um e-mail. Na demonstração, qualquer e-mail e senha entram como gestor.");
+      }
+      localStorage.setItem(PANEL_DEMO, "1");
+      accessMode = "manager";
+      return;
+    }
     var uid = await A.signIn(String(email || "").trim(), password || "");
     if (!(await A.isStaff(uid))) {
       await A.signOut();
       throw fail("NOT_STAFF", "Esta conta não tem acesso ao painel. O painel é exclusivo da equipe da loja.");
     }
+    accessMode = "manager";
   }
 
   async function staffSession() {
-    if (MODE === "demo") return { demo: true, isStaff: true, email: "demonstração" };
+    if (accessMode === "code") return { isStaff: true, code: true, manager: false, email: "Equipe (código)" };
+    if (MODE === "demo") {
+      return localStorage.getItem(PANEL_DEMO) === "1"
+        ? { demo: true, isStaff: true, manager: true, email: "demonstração" }
+        : null;
+    }
     var uid = await A.getUserId();
     if (!uid) return null;
-    return { userId: uid, email: await A.getEmail(), isStaff: await A.isStaff(uid) };
+    return { userId: uid, email: await A.getEmail(), isStaff: await A.isStaff(uid), manager: true };
   }
 
   async function staffLogout() {
+    var wasManager = accessMode === "manager";
     await vaultLock();
-    if (MODE !== "demo") await A.signOut();
+    localStorage.removeItem(PANEL_DEMO);
+    if (MODE !== "demo" && wasManager) await A.signOut();
   }
 
   async function vaultStatus() {
@@ -507,7 +579,8 @@
     if (!vault) return "missing";
     try {
       var remembered = await C.vaultGet(STORE_KEY);
-      if (remembered) { storeKey = remembered; return "unlocked"; }
+      // só o gestor guarda a chave neste aparelho (a equipe guarda o código)
+      if (remembered) { storeKey = remembered; accessMode = "manager"; return "unlocked"; }
     } catch (e) { /* sem IndexedDB */ }
     return "locked";
   }
@@ -519,6 +592,7 @@
     var wrapped = await C.wrapPrivateKey(kp.pkcs8, passphrase);
     await A.insertVault({ public_jwk: kp.publicJwk, encrypted_private_key: wrapped });
     storeKey = await C.importPrivatePkcs8(kp.pkcs8);
+    accessMode = "manager";
     if (remember) { try { await C.vaultSet(STORE_KEY, storeKey); } catch (e) { /* ignora */ } }
     notify();
   }
@@ -526,17 +600,95 @@
   async function vaultUnlock(passphrase, remember) {
     var vault = await A.getVault();
     if (!vault) throw fail("MISSING", "O cofre ainda não foi criado.");
+    // Aceita a senha do cofre ou o código da equipe (as duas abrem a mesma
+    // chave), para o gestor não ficar travado se esquecer a senha.
+    storeKey = null;
+    try { storeKey = await C.unwrapPrivateKey(vault.encrypted_private_key, passphrase || ""); } catch (e) { storeKey = null; }
+    if (!storeKey && vault.key_for_code) {
+      try { storeKey = await C.unwrapPrivateKey(vault.key_for_code, passphrase || ""); } catch (e) { storeKey = null; }
+    }
+    if (!storeKey) throw fail("WRONG_PASSPHRASE", "Senha do cofre (ou código da equipe) incorreta.");
+    accessMode = "manager";
+    if (remember) { try { await C.vaultSet(STORE_KEY, storeKey); } catch (e) { /* ignora */ } }
+  }
+
+  // ---------- acesso da equipe por código ----------
+  async function codeUnlock(code, remember) {
+    code = String(code || "").trim();
+    if (!code) throw fail("VALIDATION", "Digite o código da equipe.");
+    var vault = await A.rpcVault(code);
+    if (!vault || !vault.key_for_code) throw fail("WRONG_CODE", "Código incorreto ou acesso por código desativado pelo gestor.");
     try {
-      storeKey = await C.unwrapPrivateKey(vault.encrypted_private_key, passphrase || "");
+      storeKey = await C.unwrapPrivateKey(vault.key_for_code, code);
+    } catch (e) {
+      throw fail("WRONG_CODE", "Código incorreto.");
+    }
+    staffCode = code;
+    accessMode = "code";
+    if (remember) localStorage.setItem(CODE_REMEMBER, code);
+    else localStorage.removeItem(CODE_REMEMBER);
+  }
+
+  async function codeRemembered() {
+    var code = localStorage.getItem(CODE_REMEMBER);
+    if (!code) return false;
+    try { await codeUnlock(code, true); return true; }
+    catch (e) { localStorage.removeItem(CODE_REMEMBER); return false; }
+  }
+
+  // O gestor define, troca ou desliga o código. Precisa da senha do cofre para
+  // gerar a cópia da chave que o código abre.
+  async function setStaffCode(newCode, vaultPassphrase) {
+    if (accessMode !== "manager") throw fail("FORBIDDEN", "Só o gestor pode definir o código da equipe.");
+    var vault = await A.getVault();
+    if (!vault) throw fail("MISSING", "O cofre ainda não foi criado.");
+    if (!newCode) {
+      await A.setStaffCode(null, null);
+      notify();
+      return;
+    }
+    newCode = String(newCode).trim();
+    if (newCode.length < 8) throw fail("VALIDATION", "O código precisa ter pelo menos 8 caracteres.");
+    var pkcs8;
+    try {
+      pkcs8 = await C.openVaultKey(vault.encrypted_private_key, vaultPassphrase || "");
     } catch (e) {
       throw fail("WRONG_PASSPHRASE", "Senha do cofre incorreta.");
     }
-    if (remember) { try { await C.vaultSet(STORE_KEY, storeKey); } catch (e) { /* ignora */ } }
+    await A.setStaffCode(newCode, await C.wrapPrivateKey(pkcs8, newCode));
+    notify();
+  }
+
+  async function staffCodeInfo() {
+    var vault = await A.getVault();
+    if (!vault) return { enabled: false, setAt: null };
+    return { enabled: !!(vault.code_hash || vault.code_verifier), setAt: toTime(vault.code_set_at) };
+  }
+
+  // Troca a senha do cofre mantendo a MESMA chave: o histórico continua legível
+  async function changeVaultPassphrase(current, next) {
+    if (accessMode !== "manager") throw fail("FORBIDDEN", "Só o gestor pode trocar a senha do cofre.");
+    if (!next || next.length < 10) throw fail("VALIDATION", "A nova senha do cofre precisa ter pelo menos 10 caracteres.");
+    var vault = await A.getVault();
+    if (!vault) throw fail("MISSING", "O cofre ainda não foi criado.");
+    // Aceita a senha atual do cofre OU o código da equipe: as duas abrem a
+    // mesma chave, então o gestor não fica travado se esquecer a senha.
+    var pkcs8 = null;
+    try { pkcs8 = await C.openVaultKey(vault.encrypted_private_key, current || ""); } catch (e) { pkcs8 = null; }
+    if (!pkcs8 && vault.key_for_code) {
+      try { pkcs8 = await C.openVaultKey(vault.key_for_code, current || ""); } catch (e) { pkcs8 = null; }
+    }
+    if (!pkcs8) throw fail("WRONG_PASSPHRASE", "Senha atual do cofre (ou código da equipe) incorreta.");
+    await A.updateVault({ encrypted_private_key: await C.wrapPrivateKey(pkcs8, next) });
+    notify();
   }
 
   async function vaultLock() {
     storeKey = null;
     openCache = {};
+    accessMode = null;
+    staffCode = null;
+    localStorage.removeItem(CODE_REMEMBER);
     try { await C.vaultDelete(STORE_KEY); } catch (e) { /* ignora */ }
   }
 
@@ -549,7 +701,7 @@
   }
 
   async function listRequests() {
-    var rows = await A.listRequests();
+    var rows = accessMode === "code" ? await A.rpcRequests(staffCode) : await A.listRequests();
     return Promise.all(rows.map(async function (r) {
       return normalize(r, await openForStore("r:" + r.id, r.data_for_store));
     }));
@@ -557,18 +709,21 @@
 
   async function setStatus(id, status) {
     if (STATUS_ORDER.indexOf(status) === -1) throw fail("VALIDATION", "Status inválido.");
-    await A.updateRequest(id, { status: status, seen_by_store: true });
+    if (accessMode === "code") await A.rpcSetStatus(staffCode, id, status);
+    else await A.updateRequest(id, { status: status, seen_by_store: true });
     notify();
   }
 
   async function markSeen(id) {
-    await A.updateRequest(id, { seen_by_store: true });
+    if (accessMode === "code") await A.rpcMarkSeen(staffCode, id);
+    else await A.updateRequest(id, { seen_by_store: true });
     notify();
   }
 
   async function listCustomers() {
-    var rows = await A.listCustomers();
-    var reqs = await A.listRequests();
+    var byCode = accessMode === "code";
+    var rows = byCode ? await A.rpcCustomers(staffCode) : await A.listCustomers();
+    var reqs = byCode ? await A.rpcRequests(staffCode) : await A.listRequests();
     var count = {};
     reqs.forEach(function (r) { count[r.customer_id] = (count[r.customer_id] || 0) + 1; });
     return Promise.all(rows.map(async function (c) {
@@ -582,7 +737,12 @@
     }));
   }
 
-  function subscribe(cb) { return A.subscribe(cb); }
+  function subscribe(cb) {
+    // No acesso por código não existe sessão no banco, então o tempo real não
+    // se aplica: o painel continua consultando a cada 20 segundos.
+    if (accessMode === "code" && MODE === "supabase") return onChange(cb);
+    return A.subscribe(cb);
+  }
 
   function clearDemoData() {
     if (MODE !== "demo") return;
@@ -634,6 +794,12 @@
     vaultCreate: vaultCreate,
     vaultUnlock: vaultUnlock,
     vaultLock: vaultLock,
+    codeUnlock: codeUnlock,
+    codeRemembered: codeRemembered,
+    setStaffCode: setStaffCode,
+    staffCodeInfo: staffCodeInfo,
+    changeVaultPassphrase: changeVaultPassphrase,
+    accessKind: function () { return accessMode; },
     listRequests: listRequests,
     setStatus: setStatus,
     markSeen: markSeen,
