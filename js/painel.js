@@ -1,7 +1,7 @@
-// Pet Tem Home — painel administrativo da loja
+// Pet Tem Home — painel da loja
 //
-// Fluxo: login da equipe → abrir o cofre (senha do cofre) → painel.
-// Os dados chegam cifrados do banco e só são abertos aqui, com a chave da loja.
+// Entrada: gestor (e-mail e senha) ou equipe (só o código definido pelo gestor).
+// Depois: quadro de solicitações, lista de clientes e, para o gestor, ajustes.
 
 (function () {
   "use strict";
@@ -14,7 +14,7 @@
   var money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
   var dateTime = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   var dateOnly = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
-  var GATES = ["gateLoading", "gateLogin", "gateVault", "dashboard"];
+  var GATES = ["gateLoading", "gateLogin", "dashboard"];
   var COLUMNS = [
     { id: "pendente", label: "🟡 Pendentes" },
     { id: "em_andamento", label: "🔵 Em andamento" },
@@ -33,8 +33,7 @@
     customers: [],
     known: null,
     unsub: null,
-    timer: null,
-    vaultMode: "unlock"
+    timer: null
   };
 
   function show(id) { GATES.forEach(function (g) { $("#" + g).hidden = g !== id; }); }
@@ -105,7 +104,7 @@
   });
   paintSound();
 
-  // ================= portões de acesso =================
+  // ================= entrada =================
   async function boot() {
     stopLive();
     show("gateLoading");
@@ -116,22 +115,16 @@
       if (!session.isStaff) {
         await API.staffLogout();
         show("gateLogin");
-        showMsg($("#staffForm"), "Esta conta não tem acesso ao painel. O painel é exclusivo da equipe da loja.");
+        showMsg($("#staffForm"), "Esta conta não tem acesso ao painel. O painel é da equipe da loja.");
         return;
       }
-      $("#staffEmailLabel").textContent = session.demo ? "· demonstração" : "· " + (session.email || "");
-      var vault = await API.vaultStatus();
-      if (vault === "unlocked") { startDashboard(); return; }
-      setVaultMode(vault === "missing" ? "create" : "unlock");
-      show("gateVault");
-      $("#vaultPass").focus();
+      startDashboard();
     } catch (err) {
       show("gateLogin");
       showMsg($("#staffForm"), err.message);
     }
   }
 
-  // abas de acesso: equipe (código) x gestor (e-mail e senha)
   (function accessTabs() {
     var tabs = $("#accessTabs");
     function pick(index) {
@@ -150,9 +143,9 @@
     var form = e.target, btn = $("button[type=submit]", form);
     clearMsg(form);
     btn.disabled = true;
-    btn.textContent = "Abrindo…";
+    btn.textContent = "Entrando…";
     try {
-      await API.codeUnlock(form.elements.code.value, form.elements.remember.checked);
+      await API.codeEnter(form.elements.code.value, form.elements.remember.checked);
       form.reset();
       startDashboard();
     } catch (err) {
@@ -161,6 +154,25 @@
     } finally {
       btn.disabled = false;
       btn.textContent = "Entrar";
+    }
+  });
+
+  $("#staffForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var form = e.target, btn = $("button[type=submit]", form);
+    clearMsg(form);
+    btn.disabled = true;
+    btn.textContent = "Entrando…";
+    try {
+      await API.staffLogin(form.elements.email.value, form.elements.password.value);
+      form.reset();
+      await boot();
+    } catch (err) {
+      showMsg(form, err.message);
+      form.elements.password.value = "";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Entrar como gestor";
     }
   });
 
@@ -180,66 +192,6 @@
     }
   });
 
-  $("#staffForm").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    var form = e.target, btn = $("button[type=submit]", form);
-    clearMsg(form);
-    btn.disabled = true;
-    btn.textContent = "Entrando…";
-    try {
-      await API.staffLogin(form.elements.email.value, form.elements.password.value);
-      form.reset();
-      await boot();
-    } catch (err) {
-      showMsg(form, err.message);
-      form.elements.password.value = "";
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Entrar no painel";
-    }
-  });
-
-  function setVaultMode(mode) {
-    state.vaultMode = mode;
-    var creating = mode === "create";
-    $("#vaultTitle").textContent = creating ? "Criar o cofre da loja" : "Abrir o cofre da loja";
-    $("#vaultLead").textContent = creating
-      ? "Primeiro acesso: crie a senha do cofre. Ela protege os dados de todos os clientes e solicitações."
-      : "Digite a senha do cofre para ver os dados dos clientes e das solicitações.";
-    $("#vaultWarn").hidden = !creating;
-    $("#vaultConfirmField").hidden = !creating;
-    $("#vaultBtn").textContent = creating ? "Criar cofre e entrar" : "Abrir cofre";
-    $("#vaultPass").autocomplete = creating ? "new-password" : "off";
-    var hint = document.getElementById("vaultHint");
-    if (hint) hint.hidden = creating;
-  }
-
-  $("#vaultForm").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    var form = e.target, btn = $("#vaultBtn"), label = btn.textContent;
-    clearMsg(form);
-    var pass = form.elements.pass.value;
-    var remember = form.elements.remember.checked;
-    if (state.vaultMode === "create" && pass !== form.elements.pass2.value) {
-      showMsg(form, "As senhas do cofre não são iguais.");
-      return;
-    }
-    btn.disabled = true;
-    btn.textContent = "Protegendo…";
-    try {
-      if (state.vaultMode === "create") await API.vaultCreate(pass, remember);
-      else await API.vaultUnlock(pass, remember);
-      form.reset();
-      startDashboard();
-    } catch (err) {
-      showMsg(form, err.message);
-      form.elements.pass.value = "";
-    } finally {
-      btn.disabled = false;
-      btn.textContent = label;
-    }
-  });
-
   $$("[data-logout]").forEach(function (b) {
     b.addEventListener("click", async function () {
       await API.staffLogout();
@@ -247,13 +199,6 @@
       toast("Você saiu do painel.");
       boot();
     });
-  });
-
-  $("#lockBtn").addEventListener("click", async function () {
-    await API.vaultLock();
-    state.known = null;
-    toast("Cofre trancado.");
-    boot();
   });
 
   // ================= painel =================
@@ -307,7 +252,7 @@
       }
       setLive(true);
     } catch (err) {
-      if (err.code === "LOCKED" || err.code === "FORBIDDEN") { boot(); return; }
+      if (err.code === "FORBIDDEN" || err.code === "WRONG_CODE" || err.code === "AUTH") { boot(); return; }
       setLive(false, err.message);
     } finally {
       refreshing = false;
@@ -324,7 +269,7 @@
 
   $("#refreshBtn").addEventListener("click", function () { refresh(); toast("Atualizado."); });
 
-  // ---------- abas principais ----------
+  // ---------- abas ----------
   $$("[data-view]").forEach(function (b) {
     b.addEventListener("click", async function () {
       state.view = b.getAttribute("data-view");
@@ -358,21 +303,16 @@
     clearMsg(form);
     btn.disabled = true;
     btn.textContent = label;
-    try {
-      await fn();
-    } catch (err) {
-      showMsg(form, err.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = original;
-    }
+    try { await fn(); }
+    catch (err) { showMsg(form, err.message); }
+    finally { btn.disabled = false; btn.textContent = original; }
   }
 
   $("#codeSetForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var form = e.target;
     submitSettings(form, "Salvando…", async function () {
-      await API.setStaffCode(form.elements.code.value, form.elements.pass.value);
+      await API.setStaffCode(form.elements.code.value);
       form.reset();
       showMsg(form, "Código salvo. Avise a equipe: é com ele que eles entram no painel.", "ok");
       paintCodeInfo();
@@ -388,16 +328,6 @@
       showMsg(form, "Acesso por código desativado.", "ok");
       paintCodeInfo();
     } catch (err) { showMsg(form, err.message); }
-  });
-
-  $("#vaultPassForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var form = e.target;
-    submitSettings(form, "Trocando…", async function () {
-      await API.changeVaultPassphrase(form.elements.current.value, form.elements.next.value);
-      form.reset();
-      showMsg(form, "Senha do cofre trocada. O histórico continua acessível.", "ok");
-    });
   });
 
   $("#loginPassForm").addEventListener("submit", function (e) {
@@ -433,22 +363,21 @@
     if (state.onlyNew && r.seen) return false;
     var q = normalize(state.q.trim());
     if (!q) return true;
-    var d = r.data || {};
-    var hay = normalize([r.code, r.number, r.kind, d.customer && d.customer.name, d.customer && d.customer.phone, d.message].join(" "));
-    return hay.indexOf(q) !== -1 || (digits(q) && digits(d.customer && d.customer.phone).indexOf(digits(q)) !== -1);
+    var c = (r.snapshot && r.snapshot.customer) || {};
+    var hay = normalize([r.code, r.number, r.kind, c.name, c.phone, r.message].join(" "));
+    return hay.indexOf(q) !== -1 || (digits(q) && digits(c.phone).indexOf(digits(q)) !== -1);
   }
 
   function renderStats(all) {
     var box = $("#stats");
     box.innerHTML = "";
     var today = new Date(); today.setHours(0, 0, 0, 0);
-    var stats = [
+    [
       [all.filter(function (r) { return !r.seen; }).length, "Novas"],
       [all.filter(function (r) { return r.status === "pendente"; }).length, "Pendentes"],
       [all.filter(function (r) { return r.status === "em_andamento"; }).length, "Em andamento"],
       [all.filter(function (r) { return r.createdAt >= today.getTime(); }).length, "Recebidas hoje"]
-    ];
-    stats.forEach(function (s) {
+    ].forEach(function (s) {
       var d = el("div", "stat");
       d.appendChild(el("b", "", String(s[0])));
       d.appendChild(el("span", "", s[1]));
@@ -515,7 +444,8 @@
   }
 
   function buildCard(r) {
-    var d = r.data;
+    var snap = r.snapshot || {};
+    var customer = snap.customer || {};
     var card = el("article", "req " + r.status + (r.seen ? "" : " is-new"));
 
     var top = el("div", "req-top");
@@ -536,53 +466,51 @@
     });
     card.appendChild(chips);
 
-    if (!d) {
-      card.appendChild(el("p", "locked", "🔒 Não foi possível abrir os dados desta solicitação com a chave atual."));
+    var who = el("p", "req-who");
+    who.appendChild(el("b", "", customer.name || "Cliente"));
+    if (r.items.length) {
+      var first = r.items[0];
+      who.appendChild(document.createTextNode(" solicitou " + first.qty + "× " + first.name + (r.items.length > 1 ? " e mais " + (r.items.length - 1) : "")));
     } else {
-      var who = el("p", "req-who");
-      who.appendChild(el("b", "", d.customer.name));
-      if (d.items && d.items.length) {
-        var first = d.items[0];
-        who.appendChild(document.createTextNode(" solicitou " + first.qty + "× " + first.name + (d.items.length > 1 ? " e mais " + (d.items.length - 1) : "")));
-      } else {
-        who.appendChild(document.createTextNode(" enviou: " + r.kind.toLowerCase()));
-      }
-      card.appendChild(who);
+      who.appendChild(document.createTextNode(" enviou: " + r.kind.toLowerCase()));
+    }
+    card.appendChild(who);
 
+    if (customer.phone) {
       var contact = el("div");
-      var phone = digits(d.customer.phone);
-      contact.appendChild(link(d.customer.phone, "tel:" + phone));
+      var phone = digits(customer.phone);
+      contact.appendChild(link(customer.phone, "tel:" + phone));
       contact.appendChild(document.createTextNode(" · "));
-      contact.appendChild(link("WhatsApp ↗", "https://wa.me/55" + phone.replace(/^55/, "") + "?text=" + encodeURIComponent("Olá, " + API.firstName(d.customer.name) + "! Aqui é da Pet Tem Home, sobre a solicitação " + r.code + "."), true));
-      if (d.contact) contact.appendChild(document.createTextNode(" · prefere " + d.contact));
+      contact.appendChild(link("WhatsApp ↗", "https://wa.me/55" + phone.replace(/^55/, "") + "?text=" + encodeURIComponent("Olá, " + API.firstName(customer.name) + "! Aqui é da Pet Tem Home, sobre a solicitação " + r.code + "."), true));
+      if (r.contact) contact.appendChild(document.createTextNode(" · prefere " + r.contact));
       card.appendChild(section("Cliente", contact));
+    }
 
-      if (d.items && d.items.length) {
-        var ul = el("ul");
-        d.items.forEach(function (i) { ul.appendChild(el("li", "", i.qty + "× " + i.name + " — " + money.format(i.price * i.qty))); });
-        card.appendChild(section("Itens", ul));
-      }
-      if (d.message) card.appendChild(section("Mensagem", d.message));
+    if (r.items.length) {
+      var ul = el("ul");
+      r.items.forEach(function (i) { ul.appendChild(el("li", "", i.qty + "× " + i.name + " — " + money.format(i.price * i.qty))); });
+      card.appendChild(section("Itens", ul));
+    }
+    if (r.message) card.appendChild(section("Mensagem", r.message));
 
-      if (r.delivery === "entrega" && d.delivery && d.delivery.address) {
-        var a = d.delivery.address;
-        var addr = el("div");
-        addr.appendChild(document.createTextNode(a.street + ", " + a.number + (a.complement ? " – " + a.complement : "")));
-        addr.appendChild(el("br"));
-        addr.appendChild(document.createTextNode(a.district + (a.cep ? " · CEP " + a.cep : "") + (a.city ? " · " + a.city : "")));
-        if (a.reference) { addr.appendChild(el("br")); addr.appendChild(document.createTextNode("Ref.: " + a.reference)); }
-        addr.appendChild(el("br"));
-        addr.appendChild(link("Abrir rota ↗", "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(a.street + ", " + a.number + ", " + a.district + ", " + (a.city || "Francisco Morato - SP")), true));
-        card.appendChild(section("Entregar em", addr));
-      }
+    if (r.delivery === "entrega" && snap.address) {
+      var a = snap.address;
+      var addr = el("div");
+      addr.appendChild(document.createTextNode(a.street + ", " + a.number + (a.complement ? " – " + a.complement : "")));
+      addr.appendChild(el("br"));
+      addr.appendChild(document.createTextNode(a.district + (a.cep ? " · CEP " + a.cep : "") + (a.city ? " · " + a.city : "")));
+      if (a.reference) { addr.appendChild(el("br")); addr.appendChild(document.createTextNode("Ref.: " + a.reference)); }
+      addr.appendChild(el("br"));
+      addr.appendChild(link("Abrir rota ↗", "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(a.street + ", " + a.number + ", " + a.district + ", " + (a.city || "Francisco Morato - SP")), true));
+      card.appendChild(section("Entregar em", addr));
+    }
 
-      card.appendChild(section("Pagamento", d.payment));
-      if (d.total) {
-        var total = el("div", "total");
-        total.appendChild(el("span", "", "Total estimado"));
-        total.appendChild(el("b", "", money.format(d.total)));
-        card.appendChild(total);
-      }
+    card.appendChild(section("Pagamento", r.payment + " (na entrega ou retirada)"));
+    if (r.total) {
+      var total = el("div", "total");
+      total.appendChild(el("span", "", snap.store || ""));
+      total.appendChild(el("b", "", money.format(r.total)));
+      card.appendChild(total);
     }
 
     var times = el("p", "times", "Recebida " + dateTime.format(r.createdAt));
@@ -621,26 +549,26 @@
       return;
     }
     list.forEach(function (c) {
-      var p = c.profile;
+      var p = c.profile || {};
       var card = el("article", "cust");
-      if (!p) {
-        card.appendChild(el("h3", "", "🔒 Cadastro protegido"));
-        card.appendChild(el("p", "", "Não foi possível abrir com a chave atual."));
-        box.appendChild(card);
-        return;
+      card.appendChild(el("h3", "", p.name || "Cliente"));
+      if (p.phone) {
+        var contact = el("p");
+        var phone = digits(p.phone);
+        contact.appendChild(link(p.phone, "tel:" + phone));
+        contact.appendChild(document.createTextNode(" · "));
+        contact.appendChild(link("WhatsApp ↗", "https://wa.me/55" + phone.replace(/^55/, ""), true));
+        card.appendChild(contact);
       }
-      card.appendChild(el("h3", "", p.name));
-      var contact = el("p");
-      var phone = digits(p.phone);
-      contact.appendChild(link(p.phone, "tel:" + phone));
-      contact.appendChild(document.createTextNode(" · "));
-      contact.appendChild(link("WhatsApp ↗", "https://wa.me/55" + phone.replace(/^55/, ""), true));
-      card.appendChild(contact);
-      var mail = el("p");
-      mail.appendChild(link(p.email, "mailto:" + p.email));
-      card.appendChild(mail);
+      if (p.email) {
+        var mail = el("p");
+        mail.appendChild(link(p.email, "mailto:" + p.email));
+        card.appendChild(mail);
+      }
       var a = p.address || {};
-      card.appendChild(el("p", "", a.street + ", " + a.number + (a.complement ? " – " + a.complement : "") + " · " + a.district + (a.cep ? " · CEP " + a.cep : "")));
+      if (a.street) {
+        card.appendChild(el("p", "", a.street + ", " + a.number + (a.complement ? " – " + a.complement : "") + " · " + a.district + (a.cep ? " · CEP " + a.cep : "")));
+      }
       var meta = el("div", "meta");
       meta.appendChild(el("span", "chip-s", "📦 " + c.requests + (c.requests === 1 ? " solicitação" : " solicitações")));
       if (c.createdAt) meta.appendChild(el("span", "chip-s", "Cliente desde " + dateOnly.format(c.createdAt)));
@@ -652,7 +580,7 @@
 
   // ---------- demonstração ----------
   $("#resetDemo").addEventListener("click", function () {
-    if (!window.confirm("Apagar contas, solicitações e o cofre de demonstração deste navegador?")) return;
+    if (!window.confirm("Apagar contas, solicitações e o código de demonstração deste navegador?")) return;
     API.clearDemoData();
     state.known = null;
     toast("Demonstração apagada.");

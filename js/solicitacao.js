@@ -149,7 +149,7 @@
     var f = new FormData(e.target);
     var btn = $("#sendBtn");
     btn.disabled = true;
-    btn.textContent = "Criptografando e enviando…";
+    btn.textContent = "Enviando…";
     try {
       var lines = cartLines();
       var result = await API.createRequest({
@@ -180,7 +180,7 @@
     $("#doneNumber").textContent = r.code;
     $("#doneDate").textContent = dateFmt.format(r.createdAt);
     $("#doneStatus").textContent = r.statusLabel;
-    $("#doneStore").textContent = r.data.store;
+    $("#doneStore").textContent = (r.snapshot && r.snapshot.store) || "";
     $("#doneKind").textContent = r.kind;
     $("#doneWhats").href = "https://wa.me/" + CFG.whatsapp + "?text=" + encodeURIComponent("Olá! Enviei a solicitação " + r.code + " pelo site da Pet Tem Home 🐾");
     show("reqDone");

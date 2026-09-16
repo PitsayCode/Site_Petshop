@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0C120D">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=11">
+<link rel="stylesheet" href="css/styles.css?v=12">
 <style>
   body{background:var(--bg-sunk);min-height:100vh;}
   .gate{min-height:100vh;display:grid;place-items:center;padding:24px 16px;}
@@ -18,7 +18,6 @@
   .gate-icon{font-size:44px;line-height:1;}
   .check{display:flex;gap:10px;align-items:flex-start;font-size:14px;font-weight:700;color:var(--ink-soft);margin:4px 0 16px;}
   .check input{width:18px;height:18px;margin-top:2px;flex:none;}
-  .warn{background:color-mix(in srgb, var(--sun) 16%, transparent);border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:700;margin-bottom:14px;}
 
   .top{position:sticky;top:0;z-index:20;background:color-mix(in srgb, var(--bg-sunk) 92%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
   .top .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 18px;}
@@ -81,7 +80,6 @@
   .actions button{flex:1 1 auto;border:1.5px solid var(--line-strong);background:var(--bg);border-radius:999px;padding:9px 10px;font-weight:800;font-size:13px;cursor:pointer;min-height:40px;}
   .actions button.primary{background:var(--forest);color:var(--forest-ink);border-color:var(--forest);}
   .actions button:disabled{opacity:.6;cursor:progress;}
-  .locked{font-size:13px;color:var(--ink-faint);}
 
   .cust-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;}
   .cust{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px;}
@@ -101,12 +99,12 @@
 <!-- ===== carregando ===== -->
 <div class="gate" id="gateLoading"><p>Carregando painel…</p></div>
 
-<!-- ===== login da equipe ===== -->
+<!-- ===== entrada: equipe (código) ou gestor (e-mail e senha) ===== -->
 <div class="gate" id="gateLogin" hidden>
   <div class="gate-card">
     <span class="gate-icon" aria-hidden="true">🏪</span>
     <h1>Painel da loja</h1>
-    <p class="lead">Acesso exclusivo da equipe Pet Tem Home.</p>
+    <p class="lead">Acesso da equipe Pet Tem Home.</p>
 
     <div class="tabs" id="accessTabs" data-active="0" role="tablist">
       <span class="tab-pill" aria-hidden="true"></span>
@@ -119,7 +117,7 @@
       <div class="field">
         <label for="accessCode">Código do painel</label>
         <input id="accessCode" name="code" type="password" autocomplete="off" required>
-        <span class="hint">O gestor da loja informa esse código.</span>
+        <span class="hint">O gestor da loja informa esse código. Esqueceu? Peça a ele para gerar outro.</span>
       </div>
       <label class="check"><input type="checkbox" name="remember" id="codeRemember">Manter conectado neste computador</label>
       <button class="btn btn-primary btn-block" type="submit">Entrar</button>
@@ -137,22 +135,6 @@
   </div>
 </div>
 
-<!-- ===== cofre da loja ===== -->
-<div class="gate" id="gateVault" hidden>
-  <form class="gate-card" id="vaultForm" novalidate>
-    <span class="gate-icon" aria-hidden="true">🔐</span>
-    <h1 id="vaultTitle">Abrir o cofre da loja</h1>
-    <p class="lead" id="vaultLead">Digite a senha do cofre para ver os dados dos clientes e das solicitações.</p>
-    <div class="warn" id="vaultWarn" hidden>Guarde essa senha em lugar seguro. Sem ela, ninguém (nem o desenvolvedor) consegue abrir os dados. Ela não pode ser recuperada.</div>
-    <div class="form-msg" role="alert" data-msg></div>
-    <div class="field"><label for="vaultPass">Senha do cofre</label><input id="vaultPass" name="pass" type="password" autocomplete="off" required><span class="hint" id="vaultHint">Esqueceu? O código da equipe também abre, e depois você redefine a senha em Ajustes.</span></div>
-    <div class="field" id="vaultConfirmField" hidden><label for="vaultPass2">Repita a senha do cofre</label><input id="vaultPass2" name="pass2" type="password" autocomplete="off"></div>
-    <label class="check"><input type="checkbox" name="remember" id="vaultRemember">Manter o cofre aberto neste computador (use só no computador da loja)</label>
-    <button class="btn btn-primary btn-block" type="submit" id="vaultBtn">Abrir cofre</button>
-    <p style="margin-top:14px;text-align:center;"><button type="button" class="link-btn" data-logout>Sair</button></p>
-  </form>
-</div>
-
 <!-- ===== painel ===== -->
 <div id="dashboard" hidden>
   <header class="top">
@@ -168,7 +150,6 @@
         <span class="new-count" id="newCount" hidden></span>
         <button type="button" class="icon-btn" id="soundBtn" aria-pressed="false">🔕 <span class="label-sm">Som</span></button>
         <button type="button" class="icon-btn" id="refreshBtn" aria-label="Atualizar agora">🔄 <span class="label-sm">Atualizar</span></button>
-        <button type="button" class="icon-btn" id="lockBtn">🔒 <span class="label-sm">Trancar</span></button>
         <button type="button" class="icon-btn" data-logout>Sair</button>
       </div>
     </div>
@@ -214,25 +195,12 @@
           <p class="hint" id="codeInfo"></p>
           <div class="form-msg" role="alert" data-msg></div>
           <div class="field">
-            <label for="newCode">Novo código (mínimo 8 caracteres)</label>
+            <label for="newCode">Novo código (mínimo 6 caracteres)</label>
             <input id="newCode" name="code" type="text" autocomplete="off">
-            <span class="hint">Os funcionários entram no painel digitando só esse código.</span>
-          </div>
-          <div class="field">
-            <label for="codeVaultPass">Sua senha do cofre</label>
-            <input id="codeVaultPass" name="pass" type="password" autocomplete="off">
+            <span class="hint">Os funcionários entram no painel digitando só esse código. Ao salvar, o código antigo para de valer.</span>
           </div>
           <button class="btn btn-primary btn-block" type="submit">Salvar código</button>
           <button class="btn btn-ghost btn-block" type="button" id="disableCode" style="margin-top:8px;">Desativar acesso por código</button>
-        </form>
-
-        <form class="cust" id="vaultPassForm" novalidate>
-          <h3>🔐 Senha do cofre</h3>
-          <p class="hint">Troca a senha mantendo a mesma chave, então o histórico continua legível.</p>
-          <div class="form-msg" role="alert" data-msg></div>
-          <div class="field"><label for="vpCurrent">Senha atual do cofre <small>(ou o código da equipe)</small></label><input id="vpCurrent" name="current" type="password" autocomplete="off"></div>
-          <div class="field"><label for="vpNext">Nova senha (mínimo 10 caracteres)</label><input id="vpNext" name="next" type="password" autocomplete="off"></div>
-          <button class="btn btn-primary btn-block" type="submit">Trocar senha do cofre</button>
         </form>
 
         <form class="cust" id="loginPassForm" novalidate>
@@ -242,6 +210,13 @@
           <div class="field"><label for="lpNext">Nova senha</label><input id="lpNext" name="password" type="password" autocomplete="new-password"></div>
           <button class="btn btn-primary btn-block" type="submit">Trocar senha de login</button>
         </form>
+
+        <div class="cust">
+          <h3>ℹ️ Como funciona o acesso</h3>
+          <p><b>Gestor:</b> entra com e-mail e senha. Se esquecer a senha, usa "Esqueci minha senha" na tela de entrada e recebe um link por e-mail.</p>
+          <p><b>Equipe:</b> entra só com o código. Se os funcionários esquecerem, você gera outro aqui e avisa todo mundo.</p>
+          <p><b>Saiu alguém da equipe?</b> Troque o código na hora.</p>
+        </div>
       </div>
     </section>
   </main>
@@ -249,10 +224,10 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="js/config.js?v=11"></script>
-<script src="js/crypto.js?v=11"></script>
+<script src="js/config.js?v=12"></script>
+<script src="js/crypto.js?v=12"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
-<script src="js/api.js?v=11"></script>
-<script src="js/painel.js?v=11"></script>
+<script src="js/api.js?v=12"></script>
+<script src="js/painel.js?v=12"></script>
 </body>
 </html>

@@ -1,14 +1,18 @@
 // Pet Tem Home — camada de dados
 //
-// Uma única interface (window.PetAPI) para o site, a página de conta, o
+// Uma única interface (window.PetAPI) para o site, a conta do cliente, o
 // formulário de solicitação e o painel da loja, com dois "motores":
 //
 //  * supabase → banco online (quando supabaseUrl/supabaseAnonKey estão em
-//                js/config.js). Pedidos feitos em qualquer aparelho chegam
-//                no painel da loja em tempo real.
+//                js/config.js). Solicitações feitas em qualquer aparelho
+//                aparecem no painel da loja.
 //  * demo     → tudo salvo no navegador (para apresentar sem configurar nada).
 //
-// Nos dois modos o banco só recebe dados CRIPTOGRAFADOS (js/crypto.js).
+// Quem acessa o quê:
+//  * Cliente    : e-mail e senha. Vê e edita só o que é dele.
+//  * Gestor     : e-mail e senha de uma conta marcada como equipe (tabela
+//                 staff). Vê o painel inteiro e define o código da equipe.
+//  * Funcionário: entra no painel digitando só o código definido pelo gestor.
 
 (function () {
   "use strict";
@@ -24,9 +28,12 @@
   var STATUS_ORDER = ["pendente", "em_andamento", "concluido"];
   var KINDS = ["Pedido de produtos", "Encomenda de produto", "Orçamento", "Dúvida ou outro assunto"];
   var PAYMENTS = ["Pix", "Cartão", "Dinheiro"];
+  var CODE_REMEMBER = "ptm3_panel_code";
+  var PANEL_DEMO = "ptm3_panel_demo";
+  var PENDING = "ptm3_pending_profile";
 
-  var CUSTOMER_KEY = "customer-enc-key";
-  var STORE_KEY = "store-private-key-v2";
+  var accessMode = null;   // "manager" (gestor logado) ou "code" (equipe)
+  var staffCode = null;    // código digitado pela equipe
 
   // ================= utilitários =================
   function fail(code, message) {
@@ -76,10 +83,10 @@
   }
   function writeLS(k, v) { localStorage.setItem(k, JSON.stringify(v)); notify(); }
 
-  // ================= motor DEMO (navegador) =================
+  // ================= motor DEMO (tudo no navegador) =================
   var DK = {
-    users: "ptm2_users", customers: "ptm2_customers", requests: "ptm2_requests",
-    seq: "ptm2_seq", vault: "ptm2_vault", session: "ptm2_session", throttle: "ptm2_throttle"
+    users: "ptm3_users", customers: "ptm3_customers", requests: "ptm3_requests",
+    seq: "ptm3_seq", access: "ptm3_access", session: "ptm3_session", throttle: "ptm3_throttle"
   };
 
   var demo = {
@@ -88,11 +95,10 @@
       var idx = await C.emailIndex(email);
       if (users[idx]) throw fail("EXISTS", "Já existe uma conta com este e-mail. Tente entrar.");
       var salt = C.randomSalt();
-      var keys = await C.deriveUserKeys(password, salt);
       var id = C.randomId("u_");
-      users[idx] = { id: id, salt: salt, verifier: keys.verifier };
+      users[idx] = { id: id, salt: salt, verifier: await C.passwordHash(password, salt), email: email };
       writeLS(DK.users, users);
-      writeLS(DK.session, { userId: id, at: Date.now() });
+      writeLS(DK.session, { userId: id, email: email, at: Date.now() });
       return { userId: id, needsConfirmation: false };
     },
     signIn: async function (email, password) {
@@ -102,20 +108,31 @@
       }
       var users = readLS(DK.users, {});
       var user = users[await C.emailIndex(email)];
-      var keys = await C.deriveUserKeys(password || "", user ? user.salt : C.randomSalt());
-      if (!user || !C.safeEqual(keys.verifier, user.verifier)) {
+      var hash = await C.passwordHash(password || "", user ? user.salt : C.randomSalt());
+      if (!user || !C.safeEqual(hash, user.verifier)) {
         t.count += 1;
         if (t.count >= 5) t.until = Date.now() + 30000 * (t.count - 4);
         localStorage.setItem(DK.throttle, JSON.stringify(t));
         throw fail("INVALID", "E-mail ou senha incorretos.");
       }
       localStorage.removeItem(DK.throttle);
-      writeLS(DK.session, { userId: user.id, at: Date.now() });
+      writeLS(DK.session, { userId: user.id, email: user.email, at: Date.now() });
       return user.id;
     },
     signOut: async function () { localStorage.removeItem(DK.session); notify(); },
     getUserId: async function () { var s = readLS(DK.session, null); return s ? s.userId : null; },
-    getEmail: async function () { return null; },
+    getEmail: async function () { var s = readLS(DK.session, null); return s ? s.email : null; },
+    updatePassword: async function (password) {
+      var s = readLS(DK.session, null);
+      if (!s) throw fail("AUTH", "Entre na sua conta primeiro.");
+      var users = readLS(DK.users, {});
+      var idx = await C.emailIndex(s.email);
+      if (!users[idx]) throw fail("AUTH", "Conta não encontrada.");
+      var salt = C.randomSalt();
+      users[idx].salt = salt;
+      users[idx].verifier = await C.passwordHash(password, salt);
+      writeLS(DK.users, users);
+    },
     getCustomer: async function (uid) { return readLS(DK.customers, {})[uid] || null; },
     insertCustomer: async function (row) {
       var uid = await demo.getUserId();
@@ -158,33 +175,29 @@
       });
       writeLS(DK.requests, all);
     },
-    getVault: async function () { return readLS(DK.vault, null); },
-    insertVault: async function (row) { writeLS(DK.vault, row); },
-    updateVault: async function (patch) { writeLS(DK.vault, Object.assign(readLS(DK.vault, {}), patch)); },
-    setStaffCode: async function (code, keyForCode) {
-      var v = readLS(DK.vault, null);
-      if (!v) throw fail("MISSING", "O cofre ainda não foi criado.");
-      if (!code) { v.code_verifier = null; v.code_salt = null; v.key_for_code = null; v.code_set_at = null; }
-      else {
+    isStaff: async function () { return localStorage.getItem(PANEL_DEMO) === "1"; },
+    setStaffCode: async function (code) {
+      var access = readLS(DK.access, {});
+      if (!code) {
+        access.code_verifier = null; access.code_salt = null; access.code_set_at = null;
+      } else {
         var salt = C.randomSalt();
-        v.code_salt = salt;
-        v.code_verifier = (await C.deriveUserKeys(code, salt)).verifier;
-        v.key_for_code = keyForCode;
-        v.code_set_at = iso();
+        access.code_salt = salt;
+        access.code_verifier = await C.passwordHash(code, salt);
+        access.code_set_at = iso();
       }
-      writeLS(DK.vault, v);
+      writeLS(DK.access, access);
+    },
+    staffCodeStatus: async function () {
+      var access = readLS(DK.access, {});
+      return { enabled: !!access.code_verifier, set_at: access.code_set_at || null };
     },
     checkCode: async function (code) {
-      var v = readLS(DK.vault, null);
-      if (!v || !v.code_verifier) return false;
-      var keys = await C.deriveUserKeys(code || "", v.code_salt);
-      return C.safeEqual(keys.verifier, v.code_verifier);
+      var access = readLS(DK.access, {});
+      if (!access.code_verifier) return false;
+      return C.safeEqual(await C.passwordHash(code || "", access.code_salt), access.code_verifier);
     },
-    rpcVault: async function (code) {
-      if (!(await demo.checkCode(code))) return null;
-      var v = readLS(DK.vault, null);
-      return { public_jwk: v.public_jwk, key_for_code: v.key_for_code };
-    },
+    rpcEnter: async function (code) { return demo.checkCode(code); },
     rpcRequests: async function (code) {
       if (!(await demo.checkCode(code))) throw fail("WRONG_CODE", "Código incorreto.");
       return demo.listRequests();
@@ -201,8 +214,6 @@
       if (!(await demo.checkCode(code))) throw fail("WRONG_CODE", "Código incorreto.");
       return demo.updateRequest(id, { seen_by_store: true });
     },
-    getStorePublicKey: async function () { var v = readLS(DK.vault, null); return v ? v.public_jwk : null; },
-    isStaff: async function () { return true; },
     subscribe: function (cb) { return onChange(cb); }
   };
 
@@ -218,9 +229,10 @@
     if (/invalid login credentials/i.test(msg)) return fail("INVALID", "E-mail ou senha incorretos.");
     if (/email not confirmed/i.test(msg)) return fail("NOT_CONFIRMED", "Confirme seu e-mail pelo link que enviamos e depois entre.");
     if (/already registered|already been registered/i.test(msg)) return fail("EXISTS", "Já existe uma conta com este e-mail. Tente entrar.");
-    if (/security purposes|rate limit|too many/i.test(msg)) return fail("THROTTLED", "Muitas tentativas seguidas. Aguarde um minuto e tente de novo.");
+    if (/security purposes|rate limit|too many|muitas tentativas/i.test(msg)) return fail("THROTTLED", "Muitas tentativas seguidas. Aguarde um minuto e tente de novo.");
+    if (/código/i.test(msg)) return fail("WRONG_CODE", msg);
     if (/password/i.test(msg)) return fail("VALIDATION", "Senha fraca: use pelo menos 8 caracteres com letras e números.");
-    if (/row-level security|permission denied/i.test(msg)) return fail("FORBIDDEN", "Você não tem permissão para esta ação.");
+    if (/row-level security|permission denied|apenas o gestor/i.test(msg)) return fail("FORBIDDEN", "Você não tem permissão para esta ação.");
     if (/failed to fetch|network/i.test(msg)) return fail("OFFLINE", "Sem conexão com o sistema da loja. Verifique a internet e tente de novo.");
     return fail("SERVER", "Não foi possível concluir agora. Tente novamente em instantes.");
   }
@@ -253,6 +265,7 @@
       var s = (await sb.auth.getSession()).data.session;
       return s ? s.user.email : null;
     },
+    updatePassword: async function (password) { must(await sb.auth.updateUser({ password: password })); },
     getCustomer: async function (uid) {
       return must(await sb.from("customers").select("*").eq("user_id", uid).maybeSingle());
     },
@@ -271,25 +284,18 @@
       return must(await sb.from("requests").select("*").order("created_at", { ascending: false }).limit(500));
     },
     updateRequest: async function (id, patch) { must(await sb.from("requests").update(patch).eq("id", id)); },
-    getVault: async function () {
-      return must(await sb.from("store_vault").select("*").eq("id", 1).maybeSingle());
+    isStaff: async function (uid) {
+      return !!must(await sb.from("staff").select("user_id").eq("user_id", uid).maybeSingle());
     },
-    insertVault: async function (row) { must(await sb.from("store_vault").insert(Object.assign({ id: 1 }, row))); },
-    updateVault: async function (patch) { must(await sb.from("store_vault").update(patch).eq("id", 1)); },
-    setStaffCode: async function (code, keyForCode) {
-      must(await sb.rpc("set_staff_code", { p_code: code, p_key_for_code: keyForCode }));
-    },
-    rpcVault: async function (code) { return must(await sb.rpc("painel_vault", { p_code: code })); },
+    setStaffCode: async function (code) { must(await sb.rpc("set_staff_code", { p_code: code })); },
+    staffCodeStatus: async function () { return must(await sb.rpc("staff_code_status")); },
+    rpcEnter: async function (code) { return must(await sb.rpc("painel_entrar", { p_code: code })); },
     rpcRequests: async function (code) { return must(await sb.rpc("painel_requests", { p_code: code })); },
     rpcCustomers: async function (code) { return must(await sb.rpc("painel_customers", { p_code: code })); },
     rpcSetStatus: async function (code, id, status) {
       must(await sb.rpc("painel_set_status", { p_code: code, p_id: id, p_status: status }));
     },
     rpcMarkSeen: async function (code, id) { must(await sb.rpc("painel_mark_seen", { p_code: code, p_id: id })); },
-    getStorePublicKey: async function () { return must(await sb.rpc("store_public_key")); },
-    isStaff: async function (uid) {
-      return !!must(await sb.from("staff").select("user_id").eq("user_id", uid).maybeSingle());
-    },
     subscribe: function (cb) {
       var ch = sb.channel("painel-" + Math.random().toString(36).slice(2))
         .on("postgres_changes", { event: "*", schema: "public", table: "requests" }, function () { cb(); })
@@ -310,52 +316,29 @@
 
   var A = MODE === "supabase" ? remote : MODE === "demo" ? demo : offline;
 
-  // ================= chave pessoal do cliente =================
-  async function getCustomerKey() { try { return (await C.vaultGet(CUSTOMER_KEY)) || null; } catch (e) { return null; } }
-  async function setCustomerKey(k) { try { await C.vaultSet(CUSTOMER_KEY, k); } catch (e) { /* sem IndexedDB */ } }
-  async function clearCustomerKey() { try { await C.vaultDelete(CUSTOMER_KEY); } catch (e) { /* ignora */ } }
-
-  async function storePublicKey() {
-    var pub = await A.getStorePublicKey();
-    if (!pub) throw fail("NO_STORE_KEY", "A loja ainda está ativando o sistema de pedidos. Tente novamente mais tarde ou fale pelo WhatsApp.");
-    return pub;
-  }
-
-  // cadastro aguardando confirmação de e-mail: guardado cifrado neste aparelho
-  var PENDING = "ptm2_pending_profile";
-  async function savePending(email, salt, box) {
-    localStorage.setItem(PENDING, JSON.stringify({ idx: await C.emailIndex(email), salt: salt, box: box }));
-  }
-  async function takePending(email) {
-    var p = readLS(PENDING, null);
-    if (!p || p.idx !== await C.emailIndex(email)) return null;
-    return p;
-  }
-
-  async function writeCustomer(profile, salt, encKey, pub, isUpdate, uid) {
-    var row = {
-      key_salt: salt,
-      profile_for_customer: await C.encryptWithKey(encKey, profile),
-      profile_for_store: await C.sealForStore(Object.assign({}, profile, { savedAt: Date.now() }), pub)
-    };
-    if (isUpdate) await A.updateCustomer(uid, row);
-    else await A.insertCustomer(Object.assign(row, { last_login_at: iso() }));
-  }
-
   // ================= clientes =================
+  function profileFromRow(row) {
+    if (!row) return null;
+    return { name: row.name, email: row.email, phone: row.phone, address: row.address || {} };
+  }
+  function rowFromProfile(p) {
+    return {
+      name: clean(p.name, 120),
+      email: clean(p.email, 160).toLowerCase(),
+      phone: clean(p.phone, 40),
+      address: p.address || {}
+    };
+  }
+
   async function register(profile, password) {
     validateProfile(profile);
     validatePassword(password);
-    var pub = await storePublicKey();
     var res = await A.signUp(profile.email, password);
-    var salt = C.randomSalt();
-    var keys = await C.deriveUserKeys(password, salt);
     if (res.needsConfirmation) {
-      await savePending(profile.email, salt, await C.encryptWithKey(keys.encKey, profile));
+      localStorage.setItem(PENDING, JSON.stringify(profile));
       return { needsConfirmation: true };
     }
-    await writeCustomer(profile, salt, keys.encKey, pub, false);
-    await setCustomerKey(keys.encKey);
+    await A.insertCustomer(Object.assign(rowFromProfile(profile), { last_login_at: iso() }));
     notify();
     return { needsConfirmation: false };
   }
@@ -364,100 +347,61 @@
     var uid = await A.signIn(String(email || "").trim(), password || "");
     var row = await A.getCustomer(uid);
     if (!row) {
-      var pending = await takePending(email);
-      if (pending) {
-        var pk = await C.deriveUserKeys(password, pending.salt);
-        var profile = await C.decryptWithKey(pk.encKey, pending.box);
-        await writeCustomer(profile, pending.salt, pk.encKey, await storePublicKey(), false);
+      var pending = readLS(PENDING, null);
+      if (pending && String(pending.email || "").toLowerCase() === String(email).trim().toLowerCase()) {
+        await A.insertCustomer(Object.assign(rowFromProfile(pending), { last_login_at: iso() }));
         localStorage.removeItem(PENDING);
-        await setCustomerKey(pk.encKey);
         notify();
         return { profile: true };
       }
       notify();
       return { profile: false };
     }
-    var keys = await C.deriveUserKeys(password, row.key_salt);
-    try {
-      await C.decryptWithKey(keys.encKey, row.profile_for_customer);
-      await setCustomerKey(keys.encKey);
-    } catch (e) {
-      await clearCustomerKey();
-      notify();
-      return { profile: true, locked: true };
-    }
     A.updateCustomer(uid, { last_login_at: iso() }).catch(function () {});
     notify();
     return { profile: true };
   }
 
-  async function logout() {
-    await clearCustomerKey();
-    await A.signOut();
-  }
-
-  // ---------- esqueci a senha (só no modo online) ----------
-  async function requestPasswordReset(email) {
-    if (MODE !== "supabase") throw fail("DEMO", "A recuperação de senha por e-mail funciona quando o site estiver conectado ao Supabase.");
-    must(await sb.auth.resetPasswordForEmail(String(email || "").trim(), { redirectTo: window.location.origin + "/login" }));
-  }
-
-  function isRecoveryLink() {
-    return /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
-  }
-
-  async function updatePassword(password) {
-    validatePassword(password);
-    if (MODE !== "supabase") throw fail("DEMO", "Disponível apenas no modo online.");
-    must(await sb.auth.updateUser({ password: password }));
-    await clearCustomerKey();
-    notify();
-  }
+  async function logout() { await A.signOut(); }
 
   async function currentUser() {
     var uid = await A.getUserId();
     if (!uid) return null;
     var row = await A.getCustomer(uid);
-    var key = await getCustomerKey();
-    var profile = null;
-    if (row && key) {
-      try { profile = await C.decryptWithKey(key, row.profile_for_customer); } catch (e) { profile = null; }
-    }
     return {
       id: uid,
-      email: (profile && profile.email) || (await A.getEmail()),
+      email: (row && row.email) || (await A.getEmail()),
       hasProfile: !!row,
-      locked: !!row && !profile,
-      profile: profile,
-      key: key
+      profile: profileFromRow(row)
     };
   }
 
-  async function updateProfile(profile) {
-    validateProfile(profile);
-    var me = await currentUser();
-    if (!me) throw fail("AUTH", "Sua sessão expirou. Entre novamente.");
-    if (!me.key || !me.hasProfile) throw fail("LOCKED", "Entre novamente com sua senha para editar os dados.");
-    var row = await A.getCustomer(me.id);
-    await writeCustomer(profile, row.key_salt, me.key, await storePublicKey(), true, me.id);
-    notify();
-  }
-
-  // Completa ou refaz o cadastro (primeiro acesso, ou após trocar a senha)
-  async function saveProfileWithPassword(profile, password) {
+  async function saveProfile(profile) {
     validateProfile(profile);
     var uid = await A.getUserId();
     if (!uid) throw fail("AUTH", "Sua sessão expirou. Entre novamente.");
-    var salt = C.randomSalt();
-    var keys = await C.deriveUserKeys(password, salt);
     var existing = await A.getCustomer(uid);
-    await writeCustomer(profile, salt, keys.encKey, await storePublicKey(), !!existing, uid);
-    await setCustomerKey(keys.encKey);
+    if (existing) await A.updateCustomer(uid, rowFromProfile(profile));
+    else await A.insertCustomer(Object.assign(rowFromProfile(profile), { last_login_at: iso() }));
     notify();
   }
 
-  // ================= solicitações (cliente) =================
-  function normalize(row, data) {
+  // ---------- senha ----------
+  async function requestPasswordReset(email) {
+    if (MODE !== "supabase") throw fail("DEMO", "A recuperação por e-mail funciona quando o site estiver conectado ao Supabase.");
+    must(await sb.auth.resetPasswordForEmail(String(email || "").trim(), { redirectTo: window.location.origin + "/login" }));
+  }
+  function isRecoveryLink() {
+    return /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
+  }
+  async function updatePassword(password) {
+    validatePassword(password);
+    await A.updatePassword(password);
+    notify();
+  }
+
+  // ================= solicitações =================
+  function normalize(row) {
     return {
       id: row.id,
       number: row.number,
@@ -468,10 +412,15 @@
       kind: row.kind,
       storeId: row.store_id,
       delivery: row.delivery,
+      payment: row.payment,
+      contact: row.contact,
+      items: row.items || [],
+      message: row.message || "",
+      total: Number(row.total) || 0,
+      snapshot: row.snapshot || {},
       customerId: row.customer_id,
       createdAt: toTime(row.created_at),
-      statusChangedAt: toTime(row.status_changed_at),
-      data: data
+      statusChangedAt: toTime(row.status_changed_at)
     };
   }
 
@@ -492,51 +441,32 @@
       throw fail("VALIDATION", "Descreva o que você precisa ou adicione produtos da sacola.");
     }
 
-    var data = {
-      kind: kind,
-      store: store.name + " – " + store.district,
-      customer: { name: me.profile.name, phone: me.profile.phone, email: me.profile.email },
-      delivery: { type: delivery, address: delivery === "entrega" ? me.profile.address : null },
-      payment: PAYMENTS.indexOf(input.payment) !== -1 ? input.payment : PAYMENTS[0],
-      items: items,
-      total: items.reduce(function (s, i) { return s + i.price * i.qty; }, 0),
-      message: message,
-      contact: clean(input.contact, 40),
-      sentAt: Date.now()
-    };
-
-    var pub = await storePublicKey();
     var row = await A.insertRequest({
       store_id: store.id,
       kind: kind,
       delivery: delivery,
-      data_for_store: await C.sealForStore(data, pub),
-      data_for_customer: await C.encryptWithKey(me.key, data)
+      payment: PAYMENTS.indexOf(input.payment) !== -1 ? input.payment : PAYMENTS[0],
+      contact: clean(input.contact, 40),
+      items: items,
+      message: message,
+      total: items.reduce(function (s, i) { return s + i.price * i.qty; }, 0),
+      snapshot: {
+        store: store.name + " – " + store.district,
+        customer: { name: me.profile.name, phone: me.profile.phone, email: me.profile.email },
+        address: delivery === "entrega" ? me.profile.address : null
+      }
     });
     notify();
-    return normalize(row, data);
+    return normalize(row);
   }
 
   async function myRequests() {
-    var me = await currentUser();
-    if (!me) return [];
-    var rows = await A.listMyRequests(me.id);
-    return Promise.all(rows.map(async function (r) {
-      var data = null;
-      if (me.key) { try { data = await C.decryptWithKey(me.key, r.data_for_customer); } catch (e) { data = null; } }
-      return normalize(r, data);
-    }));
+    var uid = await A.getUserId();
+    if (!uid) return [];
+    return (await A.listMyRequests(uid)).map(normalize);
   }
 
-  // ================= loja =================
-  var storeKey = null;
-  var openCache = {};
-  var accessMode = null;          // "manager" (gestor) ou "code" (equipe)
-  var staffCode = null;           // código digitado pela equipe, usado nas consultas
-  var CODE_REMEMBER = "ptm2_panel_code";
-
-  var PANEL_DEMO = "ptm2_panel";
-
+  // ================= painel da loja =================
   async function staffLogin(email, password) {
     if (MODE === "demo") {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""))) {
@@ -549,7 +479,7 @@
     var uid = await A.signIn(String(email || "").trim(), password || "");
     if (!(await A.isStaff(uid))) {
       await A.signOut();
-      throw fail("NOT_STAFF", "Esta conta não tem acesso ao painel. O painel é exclusivo da equipe da loja.");
+      throw fail("NOT_STAFF", "Esta conta não tem acesso ao painel. O painel é da equipe da loja.");
     }
     accessMode = "manager";
   }
@@ -557,72 +487,33 @@
   async function staffSession() {
     if (accessMode === "code") return { isStaff: true, code: true, manager: false, email: "Equipe (código)" };
     if (MODE === "demo") {
-      return localStorage.getItem(PANEL_DEMO) === "1"
-        ? { demo: true, isStaff: true, manager: true, email: "demonstração" }
-        : null;
+      if (localStorage.getItem(PANEL_DEMO) !== "1") return null;
+      accessMode = "manager";
+      return { demo: true, isStaff: true, manager: true, email: "demonstração" };
     }
     var uid = await A.getUserId();
     if (!uid) return null;
-    return { userId: uid, email: await A.getEmail(), isStaff: await A.isStaff(uid), manager: true };
+    var staff = await A.isStaff(uid);
+    if (staff) accessMode = "manager";
+    return { userId: uid, email: await A.getEmail(), isStaff: staff, manager: staff };
   }
 
   async function staffLogout() {
     var wasManager = accessMode === "manager";
-    await vaultLock();
+    accessMode = null;
+    staffCode = null;
+    localStorage.removeItem(CODE_REMEMBER);
     localStorage.removeItem(PANEL_DEMO);
     if (MODE !== "demo" && wasManager) await A.signOut();
-  }
-
-  async function vaultStatus() {
-    if (storeKey) return "unlocked";
-    var vault = await A.getVault();
-    if (!vault) return "missing";
-    try {
-      var remembered = await C.vaultGet(STORE_KEY);
-      // só o gestor guarda a chave neste aparelho (a equipe guarda o código)
-      if (remembered) { storeKey = remembered; accessMode = "manager"; return "unlocked"; }
-    } catch (e) { /* sem IndexedDB */ }
-    return "locked";
-  }
-
-  async function vaultCreate(passphrase, remember) {
-    if (!passphrase || passphrase.length < 10) throw fail("VALIDATION", "A senha do cofre precisa ter pelo menos 10 caracteres.");
-    if (await A.getVault()) throw fail("EXISTS", "O cofre da loja já foi criado. Use a senha do cofre para abrir.");
-    var kp = await C.generateVaultKeyPair();
-    var wrapped = await C.wrapPrivateKey(kp.pkcs8, passphrase);
-    await A.insertVault({ public_jwk: kp.publicJwk, encrypted_private_key: wrapped });
-    storeKey = await C.importPrivatePkcs8(kp.pkcs8);
-    accessMode = "manager";
-    if (remember) { try { await C.vaultSet(STORE_KEY, storeKey); } catch (e) { /* ignora */ } }
     notify();
   }
 
-  async function vaultUnlock(passphrase, remember) {
-    var vault = await A.getVault();
-    if (!vault) throw fail("MISSING", "O cofre ainda não foi criado.");
-    // Aceita a senha do cofre ou o código da equipe (as duas abrem a mesma
-    // chave), para o gestor não ficar travado se esquecer a senha.
-    storeKey = null;
-    try { storeKey = await C.unwrapPrivateKey(vault.encrypted_private_key, passphrase || ""); } catch (e) { storeKey = null; }
-    if (!storeKey && vault.key_for_code) {
-      try { storeKey = await C.unwrapPrivateKey(vault.key_for_code, passphrase || ""); } catch (e) { storeKey = null; }
-    }
-    if (!storeKey) throw fail("WRONG_PASSPHRASE", "Senha do cofre (ou código da equipe) incorreta.");
-    accessMode = "manager";
-    if (remember) { try { await C.vaultSet(STORE_KEY, storeKey); } catch (e) { /* ignora */ } }
-  }
-
   // ---------- acesso da equipe por código ----------
-  async function codeUnlock(code, remember) {
+  async function codeEnter(code, remember) {
     code = String(code || "").trim();
     if (!code) throw fail("VALIDATION", "Digite o código da equipe.");
-    var vault = await A.rpcVault(code);
-    if (!vault || !vault.key_for_code) throw fail("WRONG_CODE", "Código incorreto ou acesso por código desativado pelo gestor.");
-    try {
-      storeKey = await C.unwrapPrivateKey(vault.key_for_code, code);
-    } catch (e) {
-      throw fail("WRONG_CODE", "Código incorreto.");
-    }
+    var ok = await A.rpcEnter(code);
+    if (!ok) throw fail("WRONG_CODE", "Código incorreto ou acesso por código desativado pelo gestor.");
     staffCode = code;
     accessMode = "code";
     if (remember) localStorage.setItem(CODE_REMEMBER, code);
@@ -632,79 +523,29 @@
   async function codeRemembered() {
     var code = localStorage.getItem(CODE_REMEMBER);
     if (!code) return false;
-    try { await codeUnlock(code, true); return true; }
+    try { await codeEnter(code, true); return true; }
     catch (e) { localStorage.removeItem(CODE_REMEMBER); return false; }
   }
 
-  // O gestor define, troca ou desliga o código. Precisa da senha do cofre para
-  // gerar a cópia da chave que o código abre.
-  async function setStaffCode(newCode, vaultPassphrase) {
+  async function setStaffCode(newCode) {
     if (accessMode !== "manager") throw fail("FORBIDDEN", "Só o gestor pode definir o código da equipe.");
-    var vault = await A.getVault();
-    if (!vault) throw fail("MISSING", "O cofre ainda não foi criado.");
-    if (!newCode) {
-      await A.setStaffCode(null, null);
-      notify();
-      return;
+    if (newCode) {
+      newCode = String(newCode).trim();
+      if (newCode.length < 6) throw fail("VALIDATION", "O código precisa ter pelo menos 6 caracteres.");
     }
-    newCode = String(newCode).trim();
-    if (newCode.length < 8) throw fail("VALIDATION", "O código precisa ter pelo menos 8 caracteres.");
-    var pkcs8;
-    try {
-      pkcs8 = await C.openVaultKey(vault.encrypted_private_key, vaultPassphrase || "");
-    } catch (e) {
-      throw fail("WRONG_PASSPHRASE", "Senha do cofre incorreta.");
-    }
-    await A.setStaffCode(newCode, await C.wrapPrivateKey(pkcs8, newCode));
+    await A.setStaffCode(newCode || null);
     notify();
   }
 
   async function staffCodeInfo() {
-    var vault = await A.getVault();
-    if (!vault) return { enabled: false, setAt: null };
-    return { enabled: !!(vault.code_hash || vault.code_verifier), setAt: toTime(vault.code_set_at) };
+    var status = await A.staffCodeStatus();
+    return { enabled: !!(status && status.enabled), setAt: toTime(status && status.set_at) };
   }
 
-  // Troca a senha do cofre mantendo a MESMA chave: o histórico continua legível
-  async function changeVaultPassphrase(current, next) {
-    if (accessMode !== "manager") throw fail("FORBIDDEN", "Só o gestor pode trocar a senha do cofre.");
-    if (!next || next.length < 10) throw fail("VALIDATION", "A nova senha do cofre precisa ter pelo menos 10 caracteres.");
-    var vault = await A.getVault();
-    if (!vault) throw fail("MISSING", "O cofre ainda não foi criado.");
-    // Aceita a senha atual do cofre OU o código da equipe: as duas abrem a
-    // mesma chave, então o gestor não fica travado se esquecer a senha.
-    var pkcs8 = null;
-    try { pkcs8 = await C.openVaultKey(vault.encrypted_private_key, current || ""); } catch (e) { pkcs8 = null; }
-    if (!pkcs8 && vault.key_for_code) {
-      try { pkcs8 = await C.openVaultKey(vault.key_for_code, current || ""); } catch (e) { pkcs8 = null; }
-    }
-    if (!pkcs8) throw fail("WRONG_PASSPHRASE", "Senha atual do cofre (ou código da equipe) incorreta.");
-    await A.updateVault({ encrypted_private_key: await C.wrapPrivateKey(pkcs8, next) });
-    notify();
-  }
-
-  async function vaultLock() {
-    storeKey = null;
-    openCache = {};
-    accessMode = null;
-    staffCode = null;
-    localStorage.removeItem(CODE_REMEMBER);
-    try { await C.vaultDelete(STORE_KEY); } catch (e) { /* ignora */ }
-  }
-
-  async function openForStore(cacheKey, box) {
-    if (!storeKey) throw fail("LOCKED", "Abra o cofre da loja para ver os dados.");
-    if (openCache[cacheKey] !== undefined) return openCache[cacheKey];
-    try { openCache[cacheKey] = await C.openSealed(box, storeKey); }
-    catch (e) { openCache[cacheKey] = null; }
-    return openCache[cacheKey];
-  }
-
+  // ---------- dados do painel ----------
   async function listRequests() {
     var rows = accessMode === "code" ? await A.rpcRequests(staffCode) : await A.listRequests();
-    return Promise.all(rows.map(async function (r) {
-      return normalize(r, await openForStore("r:" + r.id, r.data_for_store));
-    }));
+    return rows.map(normalize);
   }
 
   async function setStatus(id, status) {
@@ -726,20 +567,20 @@
     var reqs = byCode ? await A.rpcRequests(staffCode) : await A.listRequests();
     var count = {};
     reqs.forEach(function (r) { count[r.customer_id] = (count[r.customer_id] || 0) + 1; });
-    return Promise.all(rows.map(async function (c) {
+    return rows.map(function (c) {
       return {
         userId: c.user_id,
+        profile: profileFromRow(c),
         createdAt: toTime(c.created_at),
         lastLoginAt: toTime(c.last_login_at),
-        requests: count[c.user_id] || 0,
-        profile: await openForStore("c:" + c.user_id + ":" + (c.updated_at || ""), c.profile_for_store)
+        requests: count[c.user_id] || 0
       };
-    }));
+    });
   }
 
   function subscribe(cb) {
-    // No acesso por código não existe sessão no banco, então o tempo real não
-    // se aplica: o painel continua consultando a cada 20 segundos.
+    // No acesso por código não há sessão no banco: o painel continua
+    // consultando a cada 20 segundos (o próprio painel cuida disso).
     if (accessMode === "code" && MODE === "supabase") return onChange(cb);
     return A.subscribe(cb);
   }
@@ -747,14 +588,10 @@
   function clearDemoData() {
     if (MODE !== "demo") return;
     Object.keys(localStorage).forEach(function (k) {
-      if (k.indexOf("ptm2_") === 0 || k.indexOf("ptm_db_") === 0 || k === "ptm_session" || k === "ptm_store_pubkey" || k === "ptm_panel_pubkey") {
-        localStorage.removeItem(k);
-      }
+      if (k.indexOf("ptm3_") === 0 || k.indexOf("ptm2_") === 0 || k.indexOf("ptm_db_") === 0) localStorage.removeItem(k);
     });
-    storeKey = null;
-    openCache = {};
-    clearCustomerKey();
-    try { C.vaultDelete(STORE_KEY); } catch (e) { /* ignora */ }
+    accessMode = null;
+    staffCode = null;
     notify();
   }
 
@@ -779,26 +616,20 @@
     login: login,
     logout: logout,
     currentUser: currentUser,
-    updateProfile: updateProfile,
-    saveProfileWithPassword: saveProfileWithPassword,
+    saveProfile: saveProfile,
     requestPasswordReset: requestPasswordReset,
     isRecoveryLink: isRecoveryLink,
     updatePassword: updatePassword,
     createRequest: createRequest,
     myRequests: myRequests,
-    // loja
+    // painel
     staffLogin: staffLogin,
     staffSession: staffSession,
     staffLogout: staffLogout,
-    vaultStatus: vaultStatus,
-    vaultCreate: vaultCreate,
-    vaultUnlock: vaultUnlock,
-    vaultLock: vaultLock,
-    codeUnlock: codeUnlock,
+    codeEnter: codeEnter,
     codeRemembered: codeRemembered,
     setStaffCode: setStaffCode,
     staffCodeInfo: staffCodeInfo,
-    changeVaultPassphrase: changeVaultPassphrase,
     accessKind: function () { return accessMode; },
     listRequests: listRequests,
     setStatus: setStatus,

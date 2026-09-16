@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=11">
+<link rel="stylesheet" href="css/styles.css?v=12">
 </head>
 <body>
 
@@ -33,12 +33,12 @@
   <aside class="auth-art">
     <div class="copy">
       <span class="eyebrow" style="color:#A9D77A">🔒 Privacidade de verdade</span>
-      <h1 style="margin-top:12px;">Seus dados ficam trancados a sete chaves.</h1>
-      <p>Senha, telefone e endereço são protegidos. Só a equipe da loja consegue abrir o que é preciso para atender você.</p>
+      <h1 style="margin-top:12px;">Sua conta, do seu jeito.</h1>
+      <p>Cadastre-se uma vez e peça sem repetir endereço e telefone. Acompanhe cada solicitação pelo número.</p>
       <ul class="lock-list">
-        <li>🔑 Senha guardada só como hash irreversível</li>
-        <li>🧾 Cadastro cifrado com AES-256 antes de sair do seu aparelho</li>
-        <li>🏪 Dados de entrega lacrados apenas para o painel da loja</li>
+        <li>🔑 Sua senha vira um código embaralhado: ninguém consegue lê-la</li>
+        <li>🧾 Seus dados ficam guardados com segurança e só a equipe da loja acessa</li>
+        <li>🏪 Endereço usado só para entregar o que você pedir</li>
       </ul>
     </div>
     <svg class="scene" viewBox="0 0 600 220" aria-hidden="true">
@@ -130,14 +130,6 @@
         <p class="lead" id="completeLead">Precisamos dos seus dados de contato e entrega.</p>
         <div class="form-msg" role="alert" data-msg></div>
         <div data-profile-fields="cp"></div>
-        <fieldset>
-          <legend>Confirme sua senha</legend>
-          <div class="field">
-            <label for="cpPassword">Senha atual da conta</label>
-            <input id="cpPassword" name="password" type="password" autocomplete="current-password" required>
-            <span class="hint">Ela cria a chave que protege seus dados. Não é enviada para a loja.</span>
-          </div>
-        </fieldset>
         <button class="btn btn-primary btn-block" type="submit">Salvar e continuar</button>
         <p style="margin-top:14px;text-align:center;"><button type="button" class="link-btn" data-logout>Sair desta conta</button></p>
       </form>
@@ -159,7 +151,7 @@
           <div class="form-msg" role="alert" data-msg></div>
           <div data-profile-fields="pf" data-readonly-email="true"></div>
           <button class="btn btn-ghost btn-block" type="submit">Salvar alterações</button>
-          <p class="secure-note">🔒 Salvo criptografado com a chave da sua senha.</p>
+          <p class="secure-note">🔒 Usamos seus dados apenas para atender suas solicitações.</p>
         </form>
       </section>
     </div>
@@ -168,10 +160,10 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="js/config.js?v=11"></script>
-<script src="js/crypto.js?v=11"></script>
+<script src="js/config.js?v=12"></script>
+<script src="js/crypto.js?v=12"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
-<script src="js/api.js?v=11"></script>
-<script src="js/login.js?v=11"></script>
+<script src="js/api.js?v=12"></script>
+<script src="js/login.js?v=12"></script>
 </body>
 </html>

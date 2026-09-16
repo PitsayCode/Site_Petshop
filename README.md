@@ -1,20 +1,20 @@
 # Pet Tem Home — site, solicitações e painel da loja
 
 Site do pet shop **Pet Tem Home** (Francisco Morato – SP) com catálogo 3D,
-mapa das lojas, cadastro de clientes, formulário de solicitação e painel
-administrativo exclusivo da loja.
+mapa das lojas, cadastro de clientes, formulário de solicitação e painel da
+loja. Pagamento é presencial (na entrega ou na retirada).
 
 ## Recursos
 
-- 👤 Cadastro e login de clientes (com recuperação de senha)
+- 👤 Cadastro e login de clientes, com recuperação de senha por e-mail
 - 📝 Formulário de solicitação: pedido de produtos, encomenda, orçamento ou dúvida
 - 📦 Número sequencial da solicitação (#0001, #0002…)
 - 🕐 Data e horário registrados pelo servidor, inclusive de cada mudança de status
-- 📊 Painel administrativo só para a loja: gestor entra com e-mail e senha, funcionários com um código
+- 📊 Painel da loja: gestor entra com e-mail e senha; funcionários com um código
 - 🔴 Novas solicitações destacadas, com contador e aviso sonoro
 - 🔄 Status: Pendente → Em andamento → Concluído
 - 🔔 Atualização automática (tempo real + checagem a cada 20 s)
-- 👨‍💼 Cadastro dos clientes no painel, com busca
+- 👨‍💼 Lista de clientes no painel, com busca
 - 📱 Interface adaptada para celular
 - 🗺️ Mapa das lojas, loja mais perto e rotas
 - 🧊 Produtos em 3D
@@ -25,14 +25,14 @@ administrativo exclusivo da loja.
 ├── index.html          Página principal (catálogo, vitrine 3D, mapa, sacola)
 ├── solicitacao.html    Formulário de solicitação
 ├── login.html          Entrar, criar conta, recuperar senha, minhas solicitações
-├── painel.html         Painel da loja (equipe)
+├── painel.html         Painel da loja
 ├── vercel.json         Endereços sem .html e cabeçalhos de segurança
 ├── supabase/schema.sql Banco de dados, regras de acesso e tempo real
 ├── css/styles.css
 └── js/
     ├── config.js       WhatsApp, lojas e chaves do Supabase
     ├── api.js          Camada de dados (Supabase ou demonstração)
-    ├── crypto.js       Criptografia (Web Crypto)
+    ├── crypto.js       Hash de senha usado no modo demonstração
     ├── solicitacao.js  Formulário
     ├── login.js        Conta do cliente
     ├── painel.js       Painel da loja
@@ -47,8 +47,8 @@ administrativo exclusivo da loja.
 
 | Modo | Quando | Como funciona |
 |---|---|---|
-| **Demonstração** | `supabaseUrl` vazio em `js/config.js` | Tudo fica salvo no navegador. Para apresentar: abra `/painel` e o site no **mesmo navegador** |
-| **Online** | Chaves do Supabase preenchidas | Clientes de qualquer aparelho enviam solicitações e a loja recebe no painel em tempo real |
+| **Demonstração** | `supabaseUrl` vazio em `js/config.js` | Tudo salvo no navegador. Para apresentar: abra `/painel` e o site no **mesmo navegador**. Qualquer e-mail e senha entram como gestor |
+| **Online** | Chaves do Supabase preenchidas | Clientes de qualquer aparelho enviam solicitações e a loja recebe no painel |
 
 ---
 
@@ -57,7 +57,7 @@ administrativo exclusivo da loja.
 ### 1. Criar o banco no Supabase
 1. Crie uma conta em **supabase.com** e clique em **New project** (plano Free).
 2. Anote a senha do banco que você definir.
-3. Vá em **SQL Editor → New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**.
+3. Vá em **SQL Editor → New query**, cole todo o `supabase/schema.sql` e clique em **Run**.
 
 ### 2. Configurar o login
 Em **Authentication → URL Configuration**:
@@ -76,20 +76,20 @@ supabaseUrl: "https://SEU-PROJETO.supabase.co",
 supabaseAnonKey: "a chave anon public",
 ```
 
-A chave *anon* é pública por natureza; a proteção vem das regras (RLS) do
-`schema.sql`. **Nunca** coloque a chave `service_role` no site.
+A chave *anon* é pública por natureza; quem protege os dados são as regras
+(RLS) do `schema.sql`. **Nunca** coloque a chave `service_role` no site.
 
 Faça commit e push para o GitHub.
 
 ### 4. Publicar na Vercel
-1. Em **vercel.com**, clique em **Add New → Project** e importe o repositório `Site_Petshop`.
-2. Framework Preset: **Other**. Build Command e Output Directory: deixe em branco.
-3. Clique em **Deploy**. Cada push no GitHub atualiza o site sozinho.
+1. Em **vercel.com**, clique em **Add New → Project** e importe o repositório.
+2. Framework Preset: **Other**. Build Command e Output Directory: em branco.
+3. **Deploy**. Cada push no GitHub atualiza o site sozinho.
 
-### 5. Criar o acesso do gestor
-1. Acesse `/login` no site publicado e crie a conta do gestor com o **e-mail mestre**
-   (ex.: `gestor@gmail.com`). Também dá para criar em **Authentication → Users → Add user**.
-2. No **SQL Editor** do Supabase, rode (trocando o e-mail):
+### 5. Liberar o painel para o gestor
+1. Crie a conta do gestor em `/login` com o e-mail dele (o "e-mail mestre"),
+   ou em **Authentication → Users → Add user**.
+2. No **SQL Editor**, rode trocando o e-mail:
 
 ```sql
 insert into public.staff (user_id, name)
@@ -97,13 +97,8 @@ select id, 'Pet Tem Home' from auth.users where email = 'gestor@gmail.com'
 on conflict (user_id) do nothing;
 ```
 
-3. Acesse `/painel` → aba **Sou o gestor** → entre com esse e-mail.
-4. **Crie a senha do cofre** (é ela que abre os dados dos clientes).
-5. No painel, abra **⚙️ Ajustes → Código da equipe** e defina o código que os
-   funcionários vão usar.
-
-Pronto: clientes se cadastram em `/login`, enviam em `/solicitacao` e a loja
-acompanha em `/painel`.
+3. Entre em `/painel` → aba **Sou o gestor** → **⚙️ Ajustes** → defina o
+   **código da equipe**. É esse código que os funcionários vão usar.
 
 ---
 
@@ -111,52 +106,115 @@ acompanha em `/painel`.
 
 | Quem | Como entra | Pode |
 |---|---|---|
-| **Gestor** | Aba "Sou o gestor": e-mail mestre + senha | Tudo: ver e mudar solicitações, ver clientes, definir o código da equipe, trocar a senha do cofre e a própria senha |
-| **Funcionário** | Aba "Sou da equipe": só o código | Ver e mudar o status das solicitações e ver os clientes. Não mexe em ajustes |
+| **Gestor** | Aba "Sou o gestor": e-mail e senha | Tudo: ver e mudar solicitações, ver clientes, definir o código e trocar a própria senha |
+| **Funcionário** | Aba "Sou da equipe": só o código | Ver e mudar o status das solicitações e ver a lista de clientes. Não entra nos ajustes |
 
 O código é uma senha compartilhada: **troque sempre que alguém sair da equipe**.
-O gestor troca em ⚙️ Ajustes, e o código antigo para de funcionar na hora.
+Ao salvar um código novo, o antigo para de valer na hora.
 
 ## Esqueci a senha — o que fazer
 
 | Situação | Solução |
 |---|---|
-| Funcionário esqueceu o código | O gestor abre ⚙️ Ajustes e define um novo código |
-| Gestor esqueceu a senha de login | Tela do painel → aba "Sou o gestor" → **Esqueci minha senha** (chega um link no e-mail) |
-| Gestor esqueceu a senha do cofre | Na tela do cofre, digite o **código da equipe** (ele também abre) e depois redefina a senha em ⚙️ Ajustes |
-| Gestor perdeu o acesso ao e-mail | Fale com quem cuida do site: em **Supabase → Authentication → Users** dá para trocar o e-mail ou enviar nova senha. Os dados continuam legíveis, desde que alguém saiba a senha do cofre ou o código |
-| Perderam a senha do cofre **e** o código | Não há como recuperar os dados antigos: é o preço de ninguém mais conseguir lê-los. Para recomeçar, apague o cofre e crie outro. As solicitações e cadastros antigos ficam ilegíveis para sempre |
+| Cliente esqueceu a senha | `/login` → "Esqueci minha senha" → link por e-mail |
+| Funcionário esqueceu o código | O gestor entra em ⚙️ Ajustes e gera outro código |
+| Gestor esqueceu a senha | Tela do painel → aba "Sou o gestor" → **Esqueci minha senha** → link por e-mail |
+| Gestor perdeu o acesso ao e-mail | Aí é com quem administra o site: veja o manual abaixo |
 
-Para recomeçar o cofre do zero (último caso da tabela), no SQL Editor:
+---
 
-```sql
-delete from public.store_vault where id = 1;
+## Manual do administrador (Supabase)
+
+Tudo aqui é feito no painel do Supabase, sem depender de ninguém.
+
+### Trocar a senha de um usuário (gestor ou cliente)
+1. **Authentication → Users**.
+2. Busque o e-mail, clique nos três pontinhos (⋮) da linha.
+3. Use a opção de **recuperação de senha** (envia o link por e-mail) ou a de
+   **redefinir senha**, se o seu projeto mostrar esse botão.
+
+Se preferir definir a senha na hora, use a API de administração. Pegue a chave
+`service_role` em **Project Settings → API** (ela é secreta, nunca vai para o
+site) e o ID do usuário na tela **Users**:
+
+```bash
+curl -X PUT "https://SEU-PROJETO.supabase.co/auth/v1/admin/users/ID-DO-USUARIO" \
+  -H "apikey: SUA_SERVICE_ROLE" \
+  -H "Authorization: Bearer SUA_SERVICE_ROLE" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"NovaSenhaForte123"}'
 ```
 
-Depois abra `/painel` como gestor e crie um cofre novo.
+### Trocar o e-mail do gestor (quando ele perdeu o acesso ao e-mail antigo)
+Mesma tela **Authentication → Users**: abra o usuário e edite o e-mail. Ou pela
+API, trocando o corpo do comando acima por:
 
-> ⚠️ A senha do cofre e o código não ficam guardados em lugar nenhum: nem no
-> Supabase, nem com o desenvolvedor. Anote os dois num gerenciador de senhas.
+```json
+{"email":"novoemail@gmail.com","email_confirm":true}
+```
+
+Depois, confira se a conta continua como gestor:
+
+```sql
+select u.email, (s.user_id is not null) as e_gestor
+from auth.users u left join public.staff s on s.user_id = u.id;
+```
+
+### Dar ou tirar acesso de gestor
+
+```sql
+-- dar acesso
+insert into public.staff (user_id, name)
+select id, 'Nome da pessoa' from auth.users where email = 'pessoa@exemplo.com'
+on conflict (user_id) do nothing;
+
+-- tirar acesso
+delete from public.staff
+where user_id = (select id from auth.users where email = 'pessoa@exemplo.com');
+```
+
+### Resetar o código da equipe pelo banco
+
+```sql
+-- desativar o código (só o gestor entra até ele criar outro)
+update public.store_access set code_hash = null, code_set_at = null where id = 1;
+
+-- ou já definir um código novo
+update public.store_access
+   set code_hash = crypt('novocodigo2026', gen_salt('bf', 10)), code_set_at = now()
+ where id = 1;
+```
+
+### Ver ou corrigir dados
+- **Table Editor → requests**: todas as solicitações, com status e datas.
+- **Table Editor → customers**: cadastro dos clientes.
+- **Authentication → Users**: contas, incluindo apagar quem pediu remoção (LGPD).
+  Apagar a conta apaga também o cadastro e as solicitações daquele cliente.
+
+> O plano gratuito do Supabase pausa o projeto depois de um tempo sem uso.
+> Se o site parar de salvar, entre no painel do Supabase e reative o projeto.
 
 ---
 
 ## Segurança e privacidade
 
-| Dado | Proteção | Quem consegue ler |
+| Dado | Proteção | Quem consegue ver |
 |---|---|---|
-| Senha do cliente | Hash (Supabase Auth, bcrypt) | Ninguém |
-| Código da equipe | Hash bcrypt no banco; tentativas limitadas (20 erros a cada 15 min) | Ninguém |
-| Nome, telefone, endereço | Cifrados no navegador e lacrados para a chave da loja | Só o painel com a senha do cofre, e o próprio cliente |
-| Detalhes da solicitação | Idem | Só o painel e o próprio cliente |
-| E-mail | Necessário para login e recuperação de senha | Supabase Auth |
-| Status, número, datas, loja, tipo | Não sensíveis, em texto normal | Cliente (as suas) e equipe |
+| Senhas | Hash bcrypt no Supabase Auth | Ninguém, nem o administrador |
+| Código da equipe | Hash bcrypt no banco, com limite de 20 erros a cada 15 min | Ninguém: só dá para conferir se está certo |
+| Nome, telefone, endereço | Regras do banco (RLS) + HTTPS | O cliente dono, a equipe da loja e quem administra o Supabase |
+| Solicitações | Idem | Idem |
 
-- **Regras do banco (RLS):** o cliente só vê as próprias solicitações. Só quem está na tabela `staff` abre o painel, lista clientes e muda status. Número, data e status inicial são definidos pelo servidor.
-- **O que o dono do banco vê:** quem abre o Supabase vê apenas texto cifrado nos dados pessoais.
-- **Limite importante:** a criptografia protege os dados guardados, não um site adulterado. Proteja o acesso ao GitHub, à Vercel e ao Supabase com senha forte e verificação em duas etapas.
-- **Trocar a senha pelo "esqueci minha senha":** o cliente confirma os dados de novo, porque a cópia cifrada com a senha antiga não abre mais.
-- **Duas cópias da chave do cofre:** uma abre com a senha do gestor, outra com o código da equipe. As duas ficam cifradas no banco; nenhuma abre sem o segredo correspondente.
-- **Acesso por código:** as consultas do painel passam por funções do banco que conferem o código a cada chamada, com limite de tentativas. Sem código válido, o banco não devolve nada.
+- **Cliente só vê o que é dele.** As regras do banco bloqueiam um cliente de
+  ver o cadastro ou as solicitações de outro, mesmo mexendo no navegador.
+- **O painel é da loja.** Sem estar na tabela `staff` ou sem o código, o banco
+  não devolve nada — a proteção não depende só da tela.
+- **Transparência:** os dados de contato e entrega ficam legíveis para a loja e
+  para quem administra o banco. É o necessário para atender e entregar.
+- **LGPD:** avise o cliente para que os dados são usados (já está no site) e
+  apague a conta quando ele pedir.
+- Proteja o acesso ao GitHub, à Vercel e ao Supabase com senha forte e
+  verificação em duas etapas.
 
 ## Mapa das lojas
 
@@ -172,7 +230,7 @@ Ordem de tentativa, automática:
 3. CARTO Voyager (`basemaps.cartocdn.com`)
 
 Se os três recusarem, aparece um aviso com link para o Google Maps, e os botões
-de rota continuam funcionando. Os créditos do mapa mudam junto com o servidor.
+de rota continuam funcionando.
 
 Se o site ficar muito movimentado, vale contratar um serviço próprio de mapas
 (MapTiler ou Stadia Maps têm plano gratuito com chave) e trocar a lista
@@ -182,4 +240,5 @@ Se o site ficar muito movimentado, vale contratar um serviço próprio de mapas
 
 - Produtos e preços: `js/data.js`
 - Lojas, coordenadas do mapa e WhatsApp: `js/config.js`
-- Ao alterar CSS ou JS, aumente o número de versão (`?v=11`) nos arquivos HTML: é o que evita o navegador usar a versão antiga guardada em cache.
+- Ao alterar CSS ou JS, aumente o número de versão (`?v=12`) nos arquivos HTML:
+  é o que evita o navegador usar a versão antiga guardada em cache.

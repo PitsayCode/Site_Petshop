@@ -376,7 +376,7 @@
     cartFoot.appendChild(el("a", { class: "btn btn-primary btn-block", href: "solicitacao.html?tipo=" + encodeURIComponent("Pedido de produtos"), text: "Continuar para a solicitação" }));
     var note = el("p", { class: "secure-note" });
     note.innerHTML = '<svg aria-hidden="true"><use href="#i-lock"/></svg>';
-    note.appendChild(document.createTextNode("No próximo passo você escolhe loja, entrega e pagamento. Seus dados vão criptografados só para a loja."));
+    note.appendChild(document.createTextNode("No próximo passo você escolhe loja, entrega e pagamento. Seus dados vão só para a equipe da loja."));
     cartFoot.appendChild(note);
   }
 

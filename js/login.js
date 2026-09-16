@@ -144,7 +144,7 @@
     var form = e.target;
     clearMsg(form);
     var f = new FormData(form);
-    busy($("button[type=submit]", form), "Verificando com segurança…", async function () {
+    busy($("button[type=submit]", form), "Entrando…", async function () {
       try {
         await API.login(String(f.get("email") || ""), String(f.get("password") || ""));
         form.reset();
@@ -164,7 +164,7 @@
     var f = new FormData(form);
     if (f.get("password") !== f.get("password2")) { showMsg(form, "As senhas não são iguais."); return; }
     if (!f.get("consent")) { showMsg(form, "Precisamos da sua autorização para usar os dados no atendimento."); return; }
-    busy($("button[type=submit]", form), "Criptografando seus dados…", async function () {
+    busy($("button[type=submit]", form), "Criando sua conta…", async function () {
       try {
         var profile = profileFrom(form);
         var res = await API.register(profile, String(f.get("password")));
@@ -223,10 +223,9 @@
     e.preventDefault();
     var form = e.target;
     clearMsg(form);
-    busy($("button[type=submit]", form), "Protegendo seus dados…", async function () {
+    busy($("button[type=submit]", form), "Salvando…", async function () {
       try {
-        await API.saveProfileWithPassword(profileFrom(form), form.elements.password.value);
-        form.elements.password.value = "";
+        await API.saveProfile(profileFrom(form));
         toast("Cadastro salvo! 🐾");
         await render();
       } catch (err) { showMsg(form, err.message); }
@@ -269,13 +268,12 @@
       row.appendChild(top);
       row.appendChild(info);
 
-      var d = r.data;
-      if (d) {
+      var parts = [];
+      if (r.items && r.items.length) parts.push(r.items.map(function (i) { return i.qty + "× " + i.name; }).join(", ") + " · " + money.format(r.total));
+      if (r.message) parts.push("“" + r.message.slice(0, 140) + (r.message.length > 140 ? "…" : "") + "”");
+      if (parts.length) {
         var detail = document.createElement("p");
         detail.className = "order-detail";
-        var parts = [];
-        if (d.items && d.items.length) parts.push(d.items.map(function (i) { return i.qty + "× " + i.name; }).join(", ") + " · " + money.format(d.total));
-        if (d.message) parts.push("“" + d.message.slice(0, 140) + (d.message.length > 140 ? "…" : "") + "”");
         detail.textContent = parts.join(" — ");
         row.appendChild(detail);
       }
@@ -294,7 +292,7 @@
     clearMsg(form);
     busy($("button[type=submit]", form), "Salvando…", async function () {
       try {
-        await API.updateProfile(profileFrom(form));
+        await API.saveProfile(profileFrom(form));
         showMsg(form, "Dados atualizados.", "ok");
       } catch (err) { showMsg(form, err.message); }
     });
@@ -319,10 +317,8 @@
 
     if (!me.profile) {
       var form = $("#completeView");
-      $("#completeTitle").textContent = me.hasProfile ? "Confirme seus dados" : "Complete seu cadastro";
-      $("#completeLead").textContent = me.hasProfile
-        ? "Por segurança, confirme seus dados e sua senha para liberar sua conta neste aparelho."
-        : "Precisamos dos seus dados de contato e entrega.";
+      $("#completeTitle").textContent = "Complete seu cadastro";
+      $("#completeLead").textContent = "Precisamos dos seus dados de contato e entrega.";
       if (me.email) form.elements.email.value = me.email;
       show("completeView");
       return;
