@@ -1,106 +1,130 @@
-# Pet Tem Home — site + contas + painel de comandas
+# Pet Tem Home — site, solicitações e painel da loja
 
-Site do pet shop **Pet Tem Home** (3 lojas em Francisco Morato – SP) com tema
-natureza, catálogo interativo, vitrine 3D, mapa das lojas, login de clientes
-e um painel de comandas para a loja receber os pedidos.
+Site do pet shop **Pet Tem Home** (Francisco Morato – SP) com catálogo 3D,
+mapa das lojas, cadastro de clientes, formulário de solicitação e painel
+administrativo exclusivo da loja.
+
+## Recursos
+
+- 👤 Cadastro e login de clientes (com recuperação de senha)
+- 📝 Formulário de solicitação: pedido de produtos, encomenda, orçamento ou dúvida
+- 📦 Número sequencial da solicitação (#0001, #0002…)
+- 🕐 Data e horário registrados pelo servidor, inclusive de cada mudança de status
+- 📊 Painel administrativo só para a equipe da loja
+- 🔴 Novas solicitações destacadas, com contador e aviso sonoro
+- 🔄 Status: Pendente → Em andamento → Concluído
+- 🔔 Atualização automática (tempo real + checagem a cada 20 s)
+- 👨‍💼 Cadastro dos clientes no painel, com busca
+- 📱 Interface adaptada para celular
+- 🗺️ Mapa das lojas, loja mais perto e rotas
+- 🧊 Produtos em 3D
 
 ## Estrutura
 
 ```
-Pet Tem Home/
-├── index.html        Página principal (menu, catálogo, vitrine 3D, mapa, sacola)
-├── login.html        Entrar / criar conta / minha conta e pedidos
-├── painel.html       HUD de comandas da loja
-├── css/styles.css    Tema natureza (cores, tipografia, componentes)
+├── index.html          Página principal (catálogo, vitrine 3D, mapa, sacola)
+├── solicitacao.html    Formulário de solicitação
+├── login.html          Entrar, criar conta, recuperar senha, minhas solicitações
+├── painel.html         Painel da loja (equipe)
+├── vercel.json         Endereços sem .html e cabeçalhos de segurança
+├── supabase/schema.sql Banco de dados, regras de acesso e tempo real
+├── css/styles.css
 └── js/
-    ├── config.js     WhatsApp, lojas (coordenadas do mapa) e chave pública do painel
-    ├── data.js       Categorias e produtos (preços ilustrativos)
-    ├── crypto.js     Criptografia (Web Crypto API)
-    ├── api.js        Camada de dados (hoje simulada no navegador)
-    ├── main.js       Menu interativo, catálogo, sacola, checkout e mapa
-    ├── produto3d.js  Vitrine 3D, fotos dos produtos e visualização rápida
-    ├── login.js      Página de conta
-    ├── painel.js     Painel de comandas
-    └── 3d/
-        ├── core.js           Motor 3D: iluminação de estúdio, materiais, sombras, fotos
-        ├── models-food.js    Embalagens, comedouro, pote, bolinha e osso
-        ├── models-scene.js   Aquário, plantas, arranhador e roupinhas
-        └── models-outdoor.js Vara com molinete, iscas e ferramentas
+    ├── config.js       WhatsApp, lojas e chaves do Supabase
+    ├── api.js          Camada de dados (Supabase ou demonstração)
+    ├── crypto.js       Criptografia (Web Crypto)
+    ├── solicitacao.js  Formulário
+    ├── login.js        Conta do cliente
+    ├── painel.js       Painel da loja
+    ├── main.js         Página principal
+    ├── mapa.js         Mapa das lojas
+    ├── produto3d.js    Vitrine 3D e visualização rápida
+    ├── data.js         Produtos
+    └── 3d/             Motor e modelos 3D
 ```
 
-## Produtos em 3D
+## Dois modos de funcionamento
 
-- Todos os produtos são modelados por código (Three.js), com iluminação de
-  estúdio, reflexos, sombras suaves e materiais realistas (plástico com
-  verniz, feltro, inox, vidro, madeira, sisal).
-- As fotos dos cards são "tiradas" do próprio modelo 3D no navegador, então
-  mudar a cor ou o rótulo em `js/data.js` já atualiza a foto.
-- Clique na foto de um produto para abrir a visualização rápida: gire, dê
-  zoom, troque a cor e toque nos pontos brancos para ver os destaques.
-- Para usar um modelo real (.glb) ou foto de estúdio no lugar do modelo
-  gerado, é só trocar o `model` do produto em `js/data.js`.
-- Ao publicar uma nova versão do CSS, aumente o número em `styles.css?v=3`
-  nos arquivos HTML para os navegadores não usarem a versão antiga.
-
-## Como rodar
-
-Login e criptografia precisam de `http://localhost` ou `https://` (não
-funcionam abrindo o arquivo com dois cliques). Na pasta do projeto:
-
-```bash
-python -m http.server 5500
-```
-
-Depois abra `http://localhost:5500`. Para a demonstração completa:
-
-1. Abra `http://localhost:5500/painel.html` em uma aba. Isso gera a chave da loja.
-2. Em outra aba, abra o site, coloque produtos na sacola e finalize.
-3. Crie a conta. O pedido aparece na hora no painel, com o nome, os itens e o endereço.
-
-É preciso internet para as fontes, o mapa (OpenStreetMap/Leaflet) e o 3D (Three.js).
-
-## Segurança dos dados
-
-| Dado | Como é protegido | Quem consegue ler |
+| Modo | Quando | Como funciona |
 |---|---|---|
-| Senha | Hash PBKDF2-SHA256, 600 mil iterações, salt aleatório. Irreversível | Ninguém |
-| Cadastro (nome, e-mail, telefone, endereço) | AES-256-GCM com chave derivada da senha da cliente | Só a própria cliente, logada |
-| Comanda (dados de entrega) | ECDH P-256 + HKDF + AES-256-GCM com a chave pública do painel | Só o computador do painel |
-| E-mail para login | Guardado só como índice derivado (PBKDF2), nunca em texto | Ninguém |
+| **Demonstração** | `supabaseUrl` vazio em `js/config.js` | Tudo fica salvo no navegador. Para apresentar: abra `/painel` e o site no **mesmo navegador** |
+| **Online** | Chaves do Supabase preenchidas | Clientes de qualquer aparelho enviam solicitações e a loja recebe no painel em tempo real |
 
-- A chave privada do painel é criada como **não exportável** e fica no
-  IndexedDB daquele computador. Nem por script ela pode ser copiada.
-- O botão "Ver dados cifrados" no painel mostra como os pedidos ficam
-  guardados no banco: só texto embaralhado.
-- Esqueceu a senha = conta perdida. É o preço de ninguém mais ter a chave.
+---
 
-### Limites que precisam ficar claros
+## Colocar no ar (gratuito): Supabase + Vercel
 
-- **A loja precisa ver o endereço para entregar.** Por isso a comanda é
-  aberta no painel. O que fica fechado para todo mundo, inclusive para
-  quem administra o site e o banco, são as senhas e os cadastros.
-- Quem controla o código do site poderia alterá-lo para capturar dados
-  **antes** de cifrar. Criptografia protege dados guardados e em trânsito,
-  não um site adulterado. Mantenha o acesso à hospedagem protegido.
-- Hoje os "bancos" ficam no `localStorage` do navegador (modo
-  demonstração). Por isso site e painel precisam estar no mesmo navegador.
+### 1. Criar o banco no Supabase
+1. Crie uma conta em **supabase.com** e clique em **New project** (plano Free).
+2. Anote a senha do banco que você definir.
+3. Vá em **SQL Editor → New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**.
 
-## Indo para produção (integração do painel)
+### 2. Configurar o login
+Em **Authentication → URL Configuration**:
+- **Site URL:** o endereço da Vercel (ex.: `https://site-petshop.vercel.app`)
+- **Redirect URLs:** adicione `https://site-petshop.vercel.app/login`
 
-1. Criar uma API (ex.: Node, PHP ou Supabase/Firebase) com HTTPS e trocar
-   as funções de `js/api.js` por chamadas `fetch()`. O servidor só recebe e
-   guarda blocos já cifrados.
-2. No servidor, aplicar mais uma camada de hash na prova de senha (Argon2id)
-   e limitar tentativas de login por IP.
-3. Abrir `painel.html` no computador da loja, clicar em **Copiar chave
-   pública** e colar em `storePublicKeyJwk` no `js/config.js`.
-4. Proteger o acesso ao painel com login de funcionário.
-5. Enviar atualizações em tempo real (WebSocket, SSE ou Supabase Realtime)
-   no lugar do aviso entre abas.
+Em **Authentication → Sign In / Providers → Email**:
+- Com **Confirm email** ligado, o cliente confirma o e-mail antes de entrar (recomendado).
+- Para uma apresentação rápida, dá para desligar.
 
-## Revisar com o cliente
+### 3. Ligar o site ao banco
+Em **Project Settings → API**, copie e cole em `js/config.js`:
 
-- Coordenadas das lojas em `js/config.js` (estão aproximadas) e o endereço da **Loja 3**.
-- Produtos e preços em `js/data.js`.
-- Fotos reais e modelos 3D reais (`.glb`) dos produtos, se houver.
-- Textos de privacidade/LGPD com um profissional.
+```js
+supabaseUrl: "https://SEU-PROJETO.supabase.co",
+supabaseAnonKey: "a chave anon public",
+```
+
+A chave *anon* é pública por natureza; a proteção vem das regras (RLS) do
+`schema.sql`. **Nunca** coloque a chave `service_role` no site.
+
+Faça commit e push para o GitHub.
+
+### 4. Publicar na Vercel
+1. Em **vercel.com**, clique em **Add New → Project** e importe o repositório `Site_Petshop`.
+2. Framework Preset: **Other**. Build Command e Output Directory: deixe em branco.
+3. Clique em **Deploy**. Cada push no GitHub atualiza o site sozinho.
+
+### 5. Criar o acesso da loja
+1. Acesse `/login` no site publicado e crie a conta da loja (ex.: `loja@pettemhome.com.br`).
+   Não precisa preencher endereço de verdade; ou crie em **Authentication → Users → Add user**.
+2. No **SQL Editor** do Supabase, rode (trocando o e-mail):
+
+```sql
+insert into public.staff (user_id, name)
+select id, 'Pet Tem Home' from auth.users where email = 'loja@pettemhome.com.br'
+on conflict (user_id) do nothing;
+```
+
+3. Acesse `/painel`, entre com essa conta e **crie a senha do cofre**.
+
+> ⚠️ **A senha do cofre não pode ser recuperada.** Ela abre os dados de todos
+> os clientes. Guarde num gerenciador de senhas. Se perder, os cadastros e
+> solicitações antigos ficam ilegíveis para sempre.
+
+Pronto: clientes se cadastram em `/login`, enviam em `/solicitacao` e a loja
+acompanha em `/painel`.
+
+---
+
+## Segurança e privacidade
+
+| Dado | Proteção | Quem consegue ler |
+|---|---|---|
+| Senha do cliente | Hash (Supabase Auth, bcrypt) | Ninguém |
+| Nome, telefone, endereço | Cifrados no navegador e lacrados para a chave da loja | Só o painel com a senha do cofre, e o próprio cliente |
+| Detalhes da solicitação | Idem | Só o painel e o próprio cliente |
+| E-mail | Necessário para login e recuperação de senha | Supabase Auth |
+| Status, número, datas, loja, tipo | Não sensíveis, em texto normal | Cliente (as suas) e equipe |
+
+- **Regras do banco (RLS):** o cliente só vê as próprias solicitações. Só quem está na tabela `staff` abre o painel, lista clientes e muda status. Número, data e status inicial são definidos pelo servidor.
+- **O que o dono do banco vê:** quem abre o Supabase vê apenas texto cifrado nos dados pessoais.
+- **Limite importante:** a criptografia protege os dados guardados, não um site adulterado. Proteja o acesso ao GitHub, à Vercel e ao Supabase com senha forte e verificação em duas etapas.
+- **Trocar a senha pelo "esqueci minha senha":** o cliente confirma os dados de novo, porque a cópia cifrada com a senha antiga não abre mais.
+
+## Personalização
+
+- Produtos e preços: `js/data.js`
+- Lojas, coordenadas do mapa e WhatsApp: `js/config.js`
+- Ao alterar o CSS, aumente o número em `styles.css?v=5` nos arquivos HTML.

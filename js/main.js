@@ -270,7 +270,6 @@
   var cartBody = $("#cartBody");
   var cartFoot = $("#cartFoot");
   var cartCount = $("#cartCount");
-  var orderDone = null;
 
   function keyOf(item) { return item.id + "|" + (item.variant || ""); }
 
@@ -288,7 +287,6 @@
     if (found) found.qty = Math.min(found.qty + (qty || 1), 20);
     else items.push({ id: id, qty: Math.min(qty || 1, 20), variant: variant || null });
     API.cart.set(items);
-    orderDone = null;
     updateBadge(true);
     var p = productById(id);
     toast((p ? p.name : "Produto") + (variant ? " · " + variant : "") + " na sacola 🐾");
@@ -337,35 +335,9 @@
     setCart(false);
   });
 
-  function radioGroup(name, options, checked) {
-    var box = el("div", { class: "segmented", role: "radiogroup" });
-    options.forEach(function (o, idx) {
-      var id = name + "_" + idx;
-      var input = el("input", { type: "radio", name: name, id: id, value: o.value });
-      if (o.value === checked) input.checked = true;
-      box.appendChild(input);
-      box.appendChild(el("label", { for: id, text: o.label }));
-    });
-    return box;
-  }
-
   async function renderCart() {
     cartBody.innerHTML = "";
     cartFoot.innerHTML = "";
-
-    if (orderDone) {
-      var wa = "https://wa.me/" + CFG.whatsapp + "?text=" + encodeURIComponent("Olá! Fiz o pedido " + orderDone.code + " pelo site 🐾");
-      cartBody.appendChild(el("div", { class: "cart-empty" }, [
-        el("i", { text: "🎉" }),
-        el("h3", { text: "Pedido enviado!" }),
-        el("p", { text: "Código " + orderDone.code + ". A comanda já chegou ao painel da " + orderDone.store + ". Acompanhe o status em Minha conta." })
-      ]));
-      cartFoot.appendChild(el("div", { style: "display:grid;gap:10px;" }, [
-        el("a", { class: "btn btn-primary btn-block", href: "login.html", text: "Acompanhar pedido" }),
-        el("a", { class: "btn btn-ghost btn-block", href: wa, target: "_blank", rel: "noopener", text: "Avisar a loja no WhatsApp" })
-      ]));
-      return;
-    }
 
     var items = cartItems();
     if (!items.length) {
@@ -399,71 +371,13 @@
       if (window.PetThumbs) window.PetThumbs.load(img);
     });
 
-    var me = await API.currentUser();
     var total = items.reduce(function (s, p) { return s + p.price * p.qty; }, 0);
-
-    var form = el("form", { id: "checkoutForm", novalidate: "" });
-    var storeSelect = el("select", { id: "storeSelect", name: "store" });
-    CFG.stores.forEach(function (s) {
-      storeSelect.appendChild(el("option", { value: s.id, text: s.name + " – " + s.district }));
-    });
-    var msg = el("div", { class: "form-msg", id: "checkoutMsg", role: "alert" });
-
-    form.appendChild(el("div", { style: "margin-top:18px;" }, [
-      el("div", { class: "field" }, [el("label", { for: "storeSelect", text: "Loja que vai atender" }), storeSelect]),
-      el("div", { class: "field" }, [el("span", { class: "label", text: "Como prefere receber?" }),
-        radioGroup("delivery", [{ value: "entrega", label: "🛵 Entrega" }, { value: "retirada", label: "🏪 Retirar na loja" }], "entrega")]),
-      el("div", { class: "field" }, [el("span", { class: "label", text: "Pagamento (na entrega ou retirada)" }),
-        radioGroup("payment", [{ value: "Pix", label: "Pix" }, { value: "Cartão", label: "Cartão" }, { value: "Dinheiro", label: "Dinheiro" }], "Pix")]),
-      el("div", { class: "field" }, [el("label", { for: "orderNotes", text: "Observações (opcional)" }),
-        el("textarea", { id: "orderNotes", name: "notes", maxlength: "400", placeholder: "Ex.: tocar a campainha, precisa de troco…" })])
-    ]));
-    cartBody.appendChild(form);
-
-    var who = me
-      ? "Entregando para " + API.firstName(me.profile.name) + " · endereço da sua conta."
-      : "Você vai entrar na sua conta para concluir.";
-    var btn = el("button", { type: "submit", form: "checkoutForm", class: "btn btn-primary btn-block", id: "checkoutBtn", text: me ? "Finalizar pedido" : "Entrar e finalizar" });
-    cartFoot.appendChild(msg);
-    cartFoot.appendChild(el("div", { class: "total-row" }, [el("span", { text: "Total" }), el("b", { text: money.format(total) })]));
-    cartFoot.appendChild(btn);
+    cartFoot.appendChild(el("div", { class: "total-row" }, [el("span", { text: "Total estimado" }), el("b", { text: money.format(total) })]));
+    cartFoot.appendChild(el("a", { class: "btn btn-primary btn-block", href: "solicitacao.html?tipo=" + encodeURIComponent("Pedido de produtos"), text: "Continuar para a solicitação" }));
     var note = el("p", { class: "secure-note" });
     note.innerHTML = '<svg aria-hidden="true"><use href="#i-lock"/></svg>';
-    note.appendChild(document.createTextNode(who + " Seus dados vão criptografados só para a loja."));
+    note.appendChild(document.createTextNode("No próximo passo você escolhe loja, entrega e pagamento. Seus dados vão criptografados só para a loja."));
     cartFoot.appendChild(note);
-
-    form.addEventListener("submit", async function (e) {
-      e.preventDefault();
-      msg.className = "form-msg";
-      if (!me) {
-        sessionStorage.setItem("ptm_next", "checkout");
-        window.location.href = "login.html?next=checkout";
-        return;
-      }
-      btn.disabled = true;
-      btn.textContent = "Lacrando e enviando…";
-      try {
-        var data = new FormData(form);
-        orderDone = await API.placeOrder({
-          items: items.map(function (p) {
-            return { name: p.name + (p.variant ? " – " + p.variant : ""), qty: p.qty, price: p.price };
-          }),
-          storeId: data.get("store"),
-          deliveryType: data.get("delivery"),
-          payment: data.get("payment"),
-          notes: data.get("notes")
-        });
-        API.cart.clear();
-        updateBadge();
-        renderCart();
-      } catch (err) {
-        msg.textContent = err.message;
-        msg.className = "form-msg error show";
-        btn.disabled = false;
-        btn.textContent = "Finalizar pedido";
-        if (err.code === "AUTH") window.location.href = "login.html?next=checkout";
-      }
-    });
   }
 
   updateBadge();

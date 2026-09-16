@@ -3,101 +3,193 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Painel de Comandas — Pet Tem Home</title>
+<title>Painel da Loja — Pet Tem Home</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0C120D">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=3">
+<link rel="stylesheet" href="css/styles.css?v=5">
 <style>
   body{background:var(--bg-sunk);min-height:100vh;}
-  .hud-top{position:sticky;top:0;z-index:20;background:color-mix(in srgb, var(--bg-sunk) 90%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
-  .hud-top .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 20px;}
-  .hud-title{display:flex;align-items:center;gap:12px;}
-  .hud-title h1{font-size:22px;}
-  .hud-title small{display:block;color:var(--ink-faint);font-weight:700;font-size:12.5px;}
-  .live{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--leaf);}
-  .live::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--leaf);animation:blink 1.6s infinite;}
+  .gate{min-height:100vh;display:grid;place-items:center;padding:24px 16px;}
+  .gate-card{width:100%;max-width:440px;background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:30px;}
+  .gate-card h1{font-size:28px;margin:8px 0 6px;}
+  .gate-card .lead{color:var(--ink-soft);margin-bottom:18px;}
+  .gate-icon{font-size:44px;line-height:1;}
+  .check{display:flex;gap:10px;align-items:flex-start;font-size:14px;font-weight:700;color:var(--ink-soft);margin:4px 0 16px;}
+  .check input{width:18px;height:18px;margin-top:2px;flex:none;}
+  .warn{background:color-mix(in srgb, var(--sun) 16%, transparent);border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:700;margin-bottom:14px;}
+
+  .top{position:sticky;top:0;z-index:20;background:color-mix(in srgb, var(--bg-sunk) 92%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+  .top .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 18px;}
+  .title{display:flex;align-items:center;gap:10px;}
+  .title h1{font-size:21px;}
+  .title small{display:flex;align-items:center;gap:8px;color:var(--ink-faint);font-weight:700;font-size:12.5px;}
+  .live{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:var(--leaf);}
+  .live::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;animation:blink 1.6s infinite;}
+  .live.off{color:var(--danger);}
   @keyframes blink{50%{opacity:.25;}}
-  .hud-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-  .keychip{font-size:12px;font-weight:800;padding:8px 12px;border-radius:999px;background:var(--bg-raised);border:1px solid var(--line);color:var(--ink-soft);}
-  .store-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:0 20px 12px;}
-  .hud{display:grid;grid-template-columns:1fr 320px;gap:18px;padding:18px 20px 40px;align-items:start;}
-  @media (max-width:1100px){ .hud{grid-template-columns:1fr;} }
-  .board{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:14px;overflow-x:auto;padding-bottom:8px;}
-  .col{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px;min-height:200px;}
+  .new-count{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#C62828;color:#fff;font-weight:800;font-size:13px;}
+  .new-count[hidden]{display:none;}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .main-tabs{display:flex;gap:6px;padding:0 18px 10px;}
+
+  .wrap-panel{padding:16px 18px 60px;max-width:1500px;margin:0 auto;}
+  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+  .filters select, .filters input[type=search]{height:42px;border-radius:999px;border:1.5px solid var(--line-strong);background:var(--bg-raised);padding:0 14px;font-weight:700;}
+  .filters input[type=search]{flex:1 1 220px;max-width:340px;}
+  .demo-bar{margin:12px 18px 0;padding:10px 14px;border-radius:12px;background:color-mix(in srgb, var(--sun) 14%, transparent);font-size:13px;font-weight:700;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+
+  .col-tabs{display:none;gap:6px;margin-bottom:12px;}
+  .col-tabs button{flex:1;padding:10px 6px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg-raised);font-weight:800;font-size:13px;cursor:pointer;}
+  .col-tabs button[aria-selected="true"]{border-color:var(--forest);background:color-mix(in srgb, var(--leaf) 16%, var(--bg-raised));}
+  .board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start;}
+  .col{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px;min-height:240px;}
   .col-head{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 12px;font-family:'Fredoka';font-weight:600;font-size:17px;}
-  .col-head span{font-family:'Nunito';font-size:12px;font-weight:800;background:var(--bg-raised);padding:3px 9px;border-radius:999px;}
+  .col-head span{font-family:'Nunito';font-size:12px;font-weight:800;background:var(--bg-raised);padding:3px 10px;border-radius:999px;}
   .col-list{display:flex;flex-direction:column;gap:10px;}
-  .comanda{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px;animation:pop .35s ease both;border-left:5px solid var(--sun);}
-  .comanda.separando{border-left-color:var(--water);}
-  .comanda.saiu{border-left-color:var(--earth);}
-  .comanda.entregue{border-left-color:var(--leaf);opacity:.85;}
-  .comanda.cancelado{border-left-color:var(--danger);opacity:.6;}
-  .comanda.fresh{box-shadow:0 0 0 2px var(--sun), var(--shadow);}
-  .c-top{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:800;color:var(--ink-faint);}
-  .c-head{font-family:'Fredoka';font-size:17px;font-weight:500;line-height:1.3;margin:8px 0 10px;}
-  .c-head b{color:var(--leaf);font-weight:600;}
-  .c-sec{border-top:1px dashed var(--line);padding-top:8px;margin-top:8px;font-size:13.5px;}
-  .c-sec .k{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);}
-  .c-sec a{color:var(--leaf);font-weight:800;text-decoration:none;}
-  .c-items{margin:0;padding-left:18px;}
-  .c-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-weight:800;}
-  .c-total b{font-family:'Fredoka';font-size:19px;color:var(--leaf);}
-  .c-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;}
-  .c-actions button{flex:1 1 auto;border:1px solid var(--line-strong);background:var(--bg);border-radius:999px;padding:8px 10px;font-weight:800;font-size:12.5px;cursor:pointer;}
-  .c-actions button.primary{background:var(--forest);color:var(--forest-ink);border-color:var(--forest);}
-  .c-actions button:hover{border-color:var(--leaf);}
-  .cipher{margin-top:10px;font-family:ui-monospace,Consolas,monospace;font-size:11px;word-break:break-all;background:var(--bg-sunk);border-radius:8px;padding:8px;color:var(--ink-faint);max-height:120px;overflow:auto;}
+  .empty-col{font-size:13px;color:var(--ink-faint);text-align:center;padding:24px 6px;}
+  @media (max-width:980px){
+    .col-tabs{display:flex;}
+    .board{display:block;}
+    .col{display:none;}
+    .col.active{display:block;}
+  }
+
+  .req{position:relative;background:var(--bg-raised);border:1px solid var(--line);border-left:5px solid var(--sun);border-radius:var(--radius-md);padding:14px;animation:pop .3s ease both;}
+  .req.em_andamento{border-left-color:var(--water);}
+  .req.concluido{border-left-color:var(--leaf);opacity:.9;}
+  .req.is-new{border-color:#E53935;border-left-color:#E53935;box-shadow:0 0 0 2px rgba(229,57,53,.35), var(--shadow);animation:pop .3s ease both, glow 1.8s ease-in-out 3;}
+  @keyframes glow{50%{box-shadow:0 0 0 6px rgba(229,57,53,.15), var(--shadow);}}
+  .req-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .req-num{font-family:'Fredoka';font-size:21px;font-weight:600;}
+  .badge-new{display:inline-flex;align-items:center;gap:5px;background:#E53935;color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;letter-spacing:.04em;}
+  .req-when{font-size:12px;font-weight:700;color:var(--ink-faint);text-align:right;}
+  .chips-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
+  .chip-s{font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px;background:var(--bg-sunk);color:var(--ink-soft);}
+  .req-who{font-family:'Fredoka';font-size:17px;font-weight:500;margin:4px 0;}
+  .req-who b{color:var(--leaf);font-weight:600;}
+  .sec{border-top:1px dashed var(--line);padding-top:8px;margin-top:8px;font-size:13.5px;}
+  .sec .k{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:2px;}
+  .sec a{color:var(--leaf);font-weight:800;text-decoration:none;}
+  .sec a:hover{text-decoration:underline;}
+  .sec ul{margin:0;padding-left:18px;}
+  .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-weight:800;}
+  .total b{font-family:'Fredoka';font-size:18px;color:var(--leaf);}
+  .times{font-size:12px;color:var(--ink-faint);font-weight:700;margin-top:8px;}
+  .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;}
+  .actions button{flex:1 1 auto;border:1.5px solid var(--line-strong);background:var(--bg);border-radius:999px;padding:9px 10px;font-weight:800;font-size:13px;cursor:pointer;min-height:40px;}
+  .actions button.primary{background:var(--forest);color:var(--forest-ink);border-color:var(--forest);}
+  .actions button:disabled{opacity:.6;cursor:progress;}
   .locked{font-size:13px;color:var(--ink-faint);}
-  .feed{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-lg);padding:14px;position:sticky;top:130px;}
-  .feed h2{font-size:18px;margin-bottom:10px;}
-  .feed ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto;}
-  .feed li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;padding:8px;border-radius:10px;background:var(--bg-raised);animation:pop .3s ease both;}
-  .feed li i{font-style:normal;font-size:18px;}
-  .feed li small{display:block;color:var(--ink-faint);font-weight:700;font-size:11.5px;}
-  .demo-note{margin:18px 20px 0;padding:10px 14px;border-radius:12px;background:color-mix(in srgb, var(--sun) 16%, transparent);font-size:13px;font-weight:700;}
-  .empty-col{font-size:13px;color:var(--ink-faint);text-align:center;padding:18px 6px;}
+
+  .cust-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;}
+  .cust{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px;}
+  .cust h3{font-size:17px;}
+  .cust p{font-size:13.5px;color:var(--ink-soft);margin-top:4px;}
+  .cust a{color:var(--leaf);font-weight:800;text-decoration:none;}
+  .cust .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .summary-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .stat{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius-md);padding:10px 14px;min-width:120px;}
+  .stat b{display:block;font-family:'Fredoka';font-size:24px;font-weight:600;}
+  .stat span{font-size:12px;font-weight:700;color:var(--ink-faint);}
+  @media (max-width:560px){ .tools .label-sm{display:none;} .title h1{font-size:18px;} }
 </style>
 </head>
 <body>
 
-<div class="hud-top">
-  <div class="bar">
-    <div class="hud-title">
-      <span style="font-size:30px" aria-hidden="true">🧾</span>
-      <div>
-        <h1>Painel de Comandas</h1>
-        <small>Pet Tem Home · <span class="live">ao vivo</span></small>
-      </div>
-    </div>
-    <div class="hud-tools">
-      <span class="keychip" id="keyChip">🔑 Preparando chave…</span>
-      <button type="button" class="icon-btn" id="copyKeyBtn">Copiar chave pública</button>
-      <button type="button" class="icon-btn" id="soundBtn" aria-pressed="false">🔕 Som</button>
-      <button type="button" class="icon-btn" id="cipherBtn" aria-pressed="false">Ver dados cifrados</button>
-      <button type="button" class="icon-btn" id="resetBtn">Limpar demonstração</button>
-    </div>
-  </div>
-  <div class="store-tabs chips" id="storeTabs" role="group" aria-label="Filtrar por loja"></div>
+<!-- ===== carregando ===== -->
+<div class="gate" id="gateLoading"><p>Carregando painel…</p></div>
+
+<!-- ===== login da equipe ===== -->
+<div class="gate" id="gateLogin" hidden>
+  <form class="gate-card" id="staffForm" novalidate>
+    <span class="gate-icon" aria-hidden="true">🏪</span>
+    <h1>Painel da loja</h1>
+    <p class="lead">Acesso exclusivo da equipe Pet Tem Home.</p>
+    <div class="form-msg" role="alert" data-msg></div>
+    <div class="field"><label for="staffEmail">E-mail da equipe</label><input id="staffEmail" name="email" type="email" autocomplete="username" required></div>
+    <div class="field"><label for="staffPassword">Senha</label><input id="staffPassword" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn-primary btn-block" type="submit">Entrar no painel</button>
+    <p class="hint" style="margin-top:14px;">Clientes: acessem <a href="login.html" style="color:var(--leaf)">Minha conta</a>.</p>
+  </form>
 </div>
 
-<p class="demo-note" id="demoNote">
-  Modo demonstração: este painel usa os dados guardados neste navegador. As comandas são abertas com a chave privada deste computador, que não pode ser exportada.
-</p>
+<!-- ===== cofre da loja ===== -->
+<div class="gate" id="gateVault" hidden>
+  <form class="gate-card" id="vaultForm" novalidate>
+    <span class="gate-icon" aria-hidden="true">🔐</span>
+    <h1 id="vaultTitle">Abrir o cofre da loja</h1>
+    <p class="lead" id="vaultLead">Digite a senha do cofre para ver os dados dos clientes e das solicitações.</p>
+    <div class="warn" id="vaultWarn" hidden>Guarde essa senha em lugar seguro. Sem ela, ninguém (nem o desenvolvedor) consegue abrir os dados. Ela não pode ser recuperada.</div>
+    <div class="form-msg" role="alert" data-msg></div>
+    <div class="field"><label for="vaultPass">Senha do cofre</label><input id="vaultPass" name="pass" type="password" autocomplete="off" required></div>
+    <div class="field" id="vaultConfirmField" hidden><label for="vaultPass2">Repita a senha do cofre</label><input id="vaultPass2" name="pass2" type="password" autocomplete="off"></div>
+    <label class="check"><input type="checkbox" name="remember" id="vaultRemember">Manter o cofre aberto neste computador (use só no computador da loja)</label>
+    <button class="btn btn-primary btn-block" type="submit" id="vaultBtn">Abrir cofre</button>
+    <p style="margin-top:14px;text-align:center;"><button type="button" class="link-btn" data-logout>Sair</button></p>
+  </form>
+</div>
 
-<main class="hud">
-  <div class="board" id="board"></div>
-  <aside class="feed">
-    <h2>Atividade recente</h2>
-    <ul id="feed"></ul>
-  </aside>
-</main>
+<!-- ===== painel ===== -->
+<div id="dashboard" hidden>
+  <header class="top">
+    <div class="bar">
+      <div class="title">
+        <span style="font-size:28px" aria-hidden="true">🧾</span>
+        <div>
+          <h1>Painel da loja</h1>
+          <small><span class="live" id="live">ao vivo</span><span id="staffEmailLabel"></span></small>
+        </div>
+      </div>
+      <div class="tools">
+        <span class="new-count" id="newCount" hidden></span>
+        <button type="button" class="icon-btn" id="soundBtn" aria-pressed="false">🔕 <span class="label-sm">Som</span></button>
+        <button type="button" class="icon-btn" id="refreshBtn" aria-label="Atualizar agora">🔄 <span class="label-sm">Atualizar</span></button>
+        <button type="button" class="icon-btn" id="lockBtn">🔒 <span class="label-sm">Trancar</span></button>
+        <button type="button" class="icon-btn" data-logout>Sair</button>
+      </div>
+    </div>
+    <div class="main-tabs chips" role="tablist">
+      <button type="button" class="chip" role="tab" data-view="requests" aria-pressed="true">📦 Solicitações</button>
+      <button type="button" class="chip" role="tab" data-view="customers" aria-pressed="false">👨‍💼 Clientes</button>
+    </div>
+  </header>
+
+  <div class="demo-bar" id="demoBar" hidden>
+    <span>Modo demonstração: dados salvos só neste navegador.</span>
+    <button type="button" class="icon-btn" id="resetDemo">Limpar demonstração</button>
+  </div>
+
+  <main class="wrap-panel">
+    <!-- solicitações -->
+    <section id="viewRequests">
+      <div class="summary-row" id="stats"></div>
+      <div class="filters">
+        <select id="storeFilter" aria-label="Filtrar por loja"></select>
+        <input type="search" id="searchRequests" placeholder="Buscar por número, nome ou telefone" aria-label="Buscar solicitações">
+        <label class="check" style="margin:0;"><input type="checkbox" id="onlyNew">Só novas</label>
+      </div>
+      <div class="col-tabs" role="tablist" id="colTabs"></div>
+      <div class="board" id="board"></div>
+    </section>
+
+    <!-- clientes -->
+    <section id="viewCustomers" hidden>
+      <div class="filters">
+        <input type="search" id="searchCustomers" placeholder="Buscar cliente por nome, telefone, e-mail ou bairro" aria-label="Buscar clientes">
+        <span class="chip-s" id="customerCount"></span>
+      </div>
+      <div class="cust-grid" id="customers"></div>
+    </section>
+  </main>
+</div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="js/config.js"></script>
 <script src="js/crypto.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
 <script src="js/api.js"></script>
 <script src="js/painel.js"></script>
 </body>

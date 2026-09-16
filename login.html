@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Minha conta — Pet Tem Home</title>
-<meta name="description" content="Entre ou crie sua conta na Pet Tem Home para fazer pedidos com entrega em Francisco Morato.">
+<meta name="description" content="Entre ou crie sua conta na Pet Tem Home para enviar solicitações e acompanhar o andamento.">
 <meta name="theme-color" content="#2E5E3E">
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=3">
+<link rel="stylesheet" href="css/styles.css?v=5">
 </head>
 <body>
 
@@ -34,11 +34,11 @@
     <div class="copy">
       <span class="eyebrow" style="color:#A9D77A">🔒 Privacidade de verdade</span>
       <h1 style="margin-top:12px;">Seus dados ficam trancados a sete chaves.</h1>
-      <p>Nem a equipe da loja, nem quem administra o site consegue ler sua senha ou seu cadastro.</p>
+      <p>Senha, telefone e endereço são protegidos. Só a equipe da loja consegue abrir o que é preciso para atender você.</p>
       <ul class="lock-list">
-        <li>🔑 Senha transformada em hash irreversível (PBKDF2, 600 mil rodadas)</li>
-        <li>🧾 Cadastro cifrado com AES-256 usando uma chave que só a sua senha abre</li>
-        <li>🏪 Endereço enviado lacrado apenas para o painel da loja que vai entregar</li>
+        <li>🔑 Senha guardada só como hash irreversível</li>
+        <li>🧾 Cadastro cifrado com AES-256 antes de sair do seu aparelho</li>
+        <li>🏪 Dados de entrega lacrados apenas para o painel da loja</li>
       </ul>
     </div>
     <svg class="scene" viewBox="0 0 600 220" aria-hidden="true">
@@ -52,8 +52,10 @@
 
   <div class="auth-main">
     <div class="auth-card">
+      <div class="form-msg" id="modeNote" role="note"></div>
+      <div class="form-msg ok" id="nextBanner">📝 Entre ou crie sua conta para enviar sua solicitação.</div>
 
-      <div class="form-msg ok" id="checkoutBanner">🧺 Sua sacola está guardada. Entre ou crie sua conta para finalizar o pedido.</div>
+      <p class="req-muted" id="loadingView">Carregando…</p>
 
       <!-- ===== Entrar / Criar conta ===== -->
       <section id="authView" hidden style="padding:0;">
@@ -65,7 +67,7 @@
 
         <form id="loginForm" role="tabpanel" aria-labelledby="tabLogin" novalidate>
           <h2>Que bom te ver de novo!</h2>
-          <p class="lead">Entre para pedir e acompanhar suas entregas.</p>
+          <p class="lead">Entre para enviar solicitações e acompanhar o andamento.</p>
           <div class="form-msg" role="alert" data-msg></div>
           <div class="field">
             <label for="loginEmail">E-mail</label>
@@ -76,40 +78,14 @@
             <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
           </div>
           <button class="btn btn-primary btn-block" type="submit">Entrar</button>
-          <p class="hint" style="margin-top:14px;">Esqueceu a senha? Por segurança ela não pode ser recuperada: como só você tem a chave, será preciso criar uma conta nova.</p>
+          <p style="margin-top:14px;text-align:center;"><button type="button" class="link-btn" id="forgotBtn">Esqueci minha senha</button></p>
         </form>
 
         <form id="signupForm" role="tabpanel" aria-labelledby="tabSignup" novalidate hidden>
           <h2>Crie sua conta</h2>
-          <p class="lead">Leva um minutinho. Usamos seus dados só para entregar seus pedidos.</p>
+          <p class="lead">Leva um minutinho. Usamos seus dados só para atender suas solicitações.</p>
           <div class="form-msg" role="alert" data-msg></div>
-
-          <fieldset>
-            <legend>Seus dados</legend>
-            <div class="field"><label for="suName">Nome completo</label><input id="suName" name="name" autocomplete="name" required></div>
-            <div class="field-row">
-              <div class="field"><label for="suEmail">E-mail</label><input id="suEmail" name="email" type="email" autocomplete="email" required></div>
-              <div class="field"><label for="suPhone">Celular / WhatsApp</label><input id="suPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 90000-0000" required></div>
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>Endereço de entrega</legend>
-            <div class="field-row r3">
-              <div class="field"><label for="suStreet">Rua</label><input id="suStreet" name="street" autocomplete="address-line1" required></div>
-              <div class="field"><label for="suNumber">Número</label><input id="suNumber" name="number" inputmode="numeric" required></div>
-            </div>
-            <div class="field-row">
-              <div class="field"><label for="suComplement">Complemento</label><input id="suComplement" name="complement" autocomplete="address-line2"></div>
-              <div class="field"><label for="suDistrict">Bairro</label><input id="suDistrict" name="district" required></div>
-            </div>
-            <div class="field-row">
-              <div class="field"><label for="suCep">CEP</label><input id="suCep" name="cep" inputmode="numeric" autocomplete="postal-code" placeholder="07900-000"></div>
-              <div class="field"><label for="suCity">Cidade</label><input id="suCity" name="city" value="Francisco Morato – SP" autocomplete="address-level2"></div>
-            </div>
-            <div class="field"><label for="suRef">Ponto de referência</label><input id="suRef" name="reference" placeholder="Ex.: portão verde, ao lado da padaria"></div>
-          </fieldset>
-
+          <div data-profile-fields="su"></div>
           <fieldset>
             <legend>Senha</legend>
             <div class="field">
@@ -120,53 +96,72 @@
             </div>
             <div class="field"><label for="suPassword2">Repita a senha</label><input id="suPassword2" name="password2" type="password" autocomplete="new-password" required></div>
           </fieldset>
-
-          <label class="hint" style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 16px;font-size:13.5px;">
-            <input type="checkbox" name="consent" required style="margin-top:4px;width:18px;height:18px;">
-            Autorizo o uso dos meus dados apenas para entrega e atendimento dos meus pedidos, conforme a LGPD.
+          <label class="hint consent">
+            <input type="checkbox" name="consent" required>
+            Autorizo o uso dos meus dados apenas para atendimento e entrega das minhas solicitações, conforme a LGPD.
           </label>
           <button class="btn btn-primary btn-block" type="submit">Criar conta</button>
         </form>
       </section>
 
+      <!-- ===== Esqueci a senha ===== -->
+      <form id="forgotView" hidden novalidate>
+        <h2>Recuperar senha</h2>
+        <p class="lead">Enviaremos um link para você criar uma nova senha.</p>
+        <div class="form-msg" role="alert" data-msg></div>
+        <div class="field"><label for="forgotEmail">E-mail da conta</label><input id="forgotEmail" name="email" type="email" autocomplete="email" required></div>
+        <button class="btn btn-primary btn-block" type="submit">Enviar link</button>
+        <p class="hint" style="margin-top:12px;">Por segurança, depois de trocar a senha você confirma seu endereço e telefone de novo: eles ficam cifrados com a senha antiga.</p>
+        <p style="margin-top:14px;text-align:center;"><button type="button" class="link-btn" data-back>← Voltar para entrar</button></p>
+      </form>
+
+      <!-- ===== Nova senha (link do e-mail) ===== -->
+      <form id="recoveryView" hidden novalidate>
+        <h2>Crie uma nova senha</h2>
+        <div class="form-msg" role="alert" data-msg></div>
+        <div class="field"><label for="newPassword">Nova senha</label><input id="newPassword" name="password" type="password" autocomplete="new-password" required></div>
+        <div class="field"><label for="newPassword2">Repita a nova senha</label><input id="newPassword2" name="password2" type="password" autocomplete="new-password" required></div>
+        <button class="btn btn-primary btn-block" type="submit">Salvar nova senha</button>
+      </form>
+
+      <!-- ===== Completar cadastro ===== -->
+      <form id="completeView" hidden novalidate>
+        <h2 id="completeTitle">Complete seu cadastro</h2>
+        <p class="lead" id="completeLead">Precisamos dos seus dados de contato e entrega.</p>
+        <div class="form-msg" role="alert" data-msg></div>
+        <div data-profile-fields="cp"></div>
+        <fieldset>
+          <legend>Confirme sua senha</legend>
+          <div class="field">
+            <label for="cpPassword">Senha atual da conta</label>
+            <input id="cpPassword" name="password" type="password" autocomplete="current-password" required>
+            <span class="hint">Ela cria a chave que protege seus dados. Não é enviada para a loja.</span>
+          </div>
+        </fieldset>
+        <button class="btn btn-primary btn-block" type="submit">Salvar e continuar</button>
+        <p style="margin-top:14px;text-align:center;"><button type="button" class="link-btn" data-logout>Sair desta conta</button></p>
+      </form>
+
       <!-- ===== Minha conta ===== -->
       <section id="accountView" hidden style="padding:0;">
         <h2 id="helloName">Olá!</h2>
-        <p class="lead">Seus pedidos e seu endereço de entrega.</p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px;">
-          <a class="btn btn-primary" href="index.html#produtos">Fazer um pedido</a>
-          <button type="button" class="btn btn-ghost" id="logoutBtn">Sair</button>
+        <p class="lead">Suas solicitações e seus dados de entrega.</p>
+        <div class="account-actions">
+          <a class="btn btn-primary" href="solicitacao.html">📝 Nova solicitação</a>
+          <button type="button" class="btn btn-ghost" data-logout>Sair</button>
         </div>
 
-        <h3 style="font-size:22px;">Meus pedidos</h3>
+        <h3 class="account-title">Minhas solicitações</h3>
         <div class="orders-list" id="ordersList"></div>
 
-        <form id="profileForm" novalidate style="margin-top:36px;">
-          <h3 style="font-size:22px;margin-bottom:14px;">Dados de entrega</h3>
+        <form id="profileForm" novalidate>
+          <h3 class="account-title" id="dados">Dados de entrega</h3>
           <div class="form-msg" role="alert" data-msg></div>
-          <div class="field"><label for="pfName">Nome completo</label><input id="pfName" name="name" autocomplete="name"></div>
-          <div class="field-row">
-            <div class="field"><label for="pfEmail">E-mail</label><input id="pfEmail" name="email" type="email" readonly></div>
-            <div class="field"><label for="pfPhone">Celular</label><input id="pfPhone" name="phone" type="tel"></div>
-          </div>
-          <div class="field-row r3">
-            <div class="field"><label for="pfStreet">Rua</label><input id="pfStreet" name="street"></div>
-            <div class="field"><label for="pfNumber">Número</label><input id="pfNumber" name="number"></div>
-          </div>
-          <div class="field-row">
-            <div class="field"><label for="pfComplement">Complemento</label><input id="pfComplement" name="complement"></div>
-            <div class="field"><label for="pfDistrict">Bairro</label><input id="pfDistrict" name="district"></div>
-          </div>
-          <div class="field-row">
-            <div class="field"><label for="pfCep">CEP</label><input id="pfCep" name="cep"></div>
-            <div class="field"><label for="pfCity">Cidade</label><input id="pfCity" name="city"></div>
-          </div>
-          <div class="field"><label for="pfRef">Ponto de referência</label><input id="pfRef" name="reference"></div>
+          <div data-profile-fields="pf" data-readonly-email="true"></div>
           <button class="btn btn-ghost btn-block" type="submit">Salvar alterações</button>
           <p class="secure-note">🔒 Salvo criptografado com a chave da sua senha.</p>
         </form>
       </section>
-
     </div>
   </div>
 </main>
@@ -175,6 +170,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/crypto.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
 <script src="js/api.js"></script>
 <script src="js/login.js"></script>
 </body>

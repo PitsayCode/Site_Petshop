@@ -229,7 +229,13 @@
 
     // o mapa precisa recalcular o tamanho quando a área muda (layout, rotação, animações)
     if (window.ResizeObserver) {
-      new ResizeObserver(function () { map.invalidateSize({ pan: false }); }).observe(mapEl);
+      var lastWidth = mapEl.clientWidth;
+      new ResizeObserver(function () {
+        map.invalidateSize({ pan: false });
+        // se o mapa nasceu sem largura (layout ainda montando), enquadra as lojas de novo
+        if (lastWidth === 0 && mapEl.clientWidth > 0 && !userLayer && !activeId) fitAll();
+        lastWidth = mapEl.clientWidth;
+      }).observe(mapEl);
     }
     var panel = mapEl.closest(".reveal");
     if (panel) panel.addEventListener("transitionend", function () { map.invalidateSize({ pan: false }); });

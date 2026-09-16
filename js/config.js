@@ -5,13 +5,15 @@ window.PET_CONFIG = {
   whatsapp: "5511934208414",
   instagram: "https://www.instagram.com/pettemhome/",
 
-  // Chave PÚBLICA do painel de comandas (formato JWK).
-  // Em produção, cole aqui a chave exportada pelo painel (botão
-  // "Copiar chave pública" em painel.html). Com ela preenchida, os pedidos
-  // são lacrados para o painel mesmo que ele esteja em outro computador.
-  // Enquanto for null, o site usa a chave publicada pelo painel neste
-  // mesmo navegador (modo demonstração).
-  storePublicKeyJwk: null,
+  // Supabase (banco de dados online, gratuito). Veja o passo a passo no README.
+  // Supabase → Project Settings → API:
+  //   supabaseUrl     = "Project URL"      (ex.: https://abcdefgh.supabase.co)
+  //   supabaseAnonKey = "anon public" key  (é pública por natureza; a proteção
+  //                                         dos dados vem das regras do banco)
+  // Enquanto ficarem vazios, o site funciona em MODO DEMONSTRAÇÃO: tudo fica
+  // salvo só no navegador de quem está usando.
+  supabaseUrl: "",
+  supabaseAnonKey: "",
 
   // Lojas exibidas no mapa. Coordenadas aproximadas (OpenStreetMap) —
   // confirme no Google Maps com o cliente antes de publicar.

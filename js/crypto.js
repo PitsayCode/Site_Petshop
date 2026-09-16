@@ -142,6 +142,47 @@
     return JSON.parse(dec.decode(pt));
   }
 
+  // ---------- cofre da loja (chave privada protegida por senha) ----------
+  // A chave privada é gerada no painel, cifrada com uma chave derivada da
+  // "senha do cofre" (PBKDF2 600 mil + AES-256-GCM) e só então enviada ao
+  // banco. Sem a senha, o banco guarda apenas bytes sem sentido.
+  async function generateVaultKeyPair() {
+    assertSupport();
+    var pair = await subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+    return {
+      publicJwk: await subtle.exportKey("jwk", pair.publicKey),
+      pkcs8: await subtle.exportKey("pkcs8", pair.privateKey)
+    };
+  }
+
+  async function passphraseKey(passphrase, salt, iterations) {
+    var base = await subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+    return subtle.deriveKey(
+      { name: "PBKDF2", hash: "SHA-256", salt: salt, iterations: iterations },
+      base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+    );
+  }
+
+  async function wrapPrivateKey(pkcs8, passphrase) {
+    assertSupport();
+    var salt = randomBytes(16), iv = randomBytes(12);
+    var key = await passphraseKey(passphrase, salt, PBKDF2_ITERATIONS);
+    var ct = await subtle.encrypt({ name: "AES-GCM", iv: iv }, key, pkcs8);
+    return { v: 1, alg: "PBKDF2-SHA256+AES-256-GCM", iterations: PBKDF2_ITERATIONS, salt: toB64(salt), iv: toB64(iv), ct: toB64(ct) };
+  }
+
+  // Devolve a chave privada como CryptoKey NÃO exportável (lança erro se a senha estiver errada)
+  async function unwrapPrivateKey(box, passphrase) {
+    assertSupport();
+    var key = await passphraseKey(passphrase, fromB64(box.salt), box.iterations || PBKDF2_ITERATIONS);
+    var pkcs8 = await subtle.decrypt({ name: "AES-GCM", iv: fromB64(box.iv) }, key, fromB64(box.ct));
+    return subtle.importKey("pkcs8", pkcs8, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
+  }
+
+  function importPrivatePkcs8(pkcs8) {
+    return subtle.importKey("pkcs8", pkcs8, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
+  }
+
   async function publicKeyFingerprint(jwk) {
     var digest = await subtle.digest("SHA-256", enc.encode(jwk.x + "." + jwk.y));
     return Array.from(new Uint8Array(digest).slice(0, 6))
@@ -182,6 +223,10 @@
     generateStoreKeyPair: generateStoreKeyPair,
     sealForStore: sealForStore,
     openSealed: openSealed,
+    generateVaultKeyPair: generateVaultKeyPair,
+    wrapPrivateKey: wrapPrivateKey,
+    unwrapPrivateKey: unwrapPrivateKey,
+    importPrivatePkcs8: importPrivatePkcs8,
     publicKeyFingerprint: publicKeyFingerprint,
     vaultSet: function (name, key) { return vault("readwrite", function (s) { return s.put(key, name); }); },
     vaultGet: function (name) { return vault("readonly", function (s) { return s.get(name); }); },

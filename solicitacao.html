@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova solicitação — Pet Tem Home</title>
+<meta name="description" content="Envie sua solicitação para a Pet Tem Home: pedido de produtos, encomenda, orçamento ou dúvida.">
+<meta name="theme-color" content="#2E5E3E">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="css/styles.css?v=5">
+</head>
+<body>
+
+<header class="site-header scrolled">
+  <div class="wrap nav">
+    <a class="brand" href="index.html">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="31" fill="#2E5E3E"/>
+        <path d="M10 46c8-6 16-8 22-8s14 2 22 8v4a31 31 0 0 1-44 0Z" fill="#6E9448"/>
+        <g fill="#F7F3E8" transform="translate(14 8) scale(.5625)"><path d="M32 50c-8 0-14-4.5-14-10.3 0-4 3.2-6.4 6.4-8.2 1.2-.7 1.7-1.8 1.4-3.1l-.8-3c-.5-2.1 1.6-4 3.6-3l3.2 1.5a3.2 3.2 0 0 0 2.8 0l3.2-1.5c2-1 4.1.9 3.6 3l-.8 3c-.3 1.3.2 2.4 1.4 3.1 3.2 1.8 6.4 4.2 6.4 8.2C46 45.5 40 50 32 50z"/><circle cx="23" cy="17" r="4.4"/><circle cx="41" cy="17" r="4.4"/><circle cx="12" cy="27" r="4"/><circle cx="52" cy="27" r="4"/></g>
+      </svg>
+      <span class="brand-word">Pet Tem Home<small>NOVA SOLICITAÇÃO</small></span>
+    </a>
+    <div class="nav-actions">
+      <a class="icon-btn" href="login.html">Minha conta</a>
+      <a class="icon-btn" href="index.html#produtos">← Loja</a>
+    </div>
+  </div>
+</header>
+
+<main class="req-page wrap">
+  <div class="form-msg" id="modeNote" role="note"></div>
+
+  <!-- carregando -->
+  <section class="req-card" id="reqLoading">
+    <p class="req-muted">Carregando…</p>
+  </section>
+
+  <!-- precisa entrar -->
+  <section class="req-card req-center" id="reqAuth" hidden>
+    <span class="req-emoji" aria-hidden="true">🔐</span>
+    <h1>Entre para fazer sua solicitação</h1>
+    <p class="req-muted">Assim a loja sabe para quem entregar e você acompanha o andamento pelo número da solicitação.</p>
+    <div class="req-actions">
+      <a class="btn btn-primary" href="login.html?next=solicitacao">Entrar</a>
+      <a class="btn btn-ghost" href="login.html?next=solicitacao&amp;tab=cadastro">Criar conta</a>
+    </div>
+  </section>
+
+  <!-- cadastro incompleto -->
+  <section class="req-card req-center" id="reqProfile" hidden>
+    <span class="req-emoji" aria-hidden="true">📝</span>
+    <h1>Falta completar seu cadastro</h1>
+    <p class="req-muted">Precisamos do seu telefone e endereço para atender a solicitação.</p>
+    <div class="req-actions">
+      <a class="btn btn-primary" href="login.html?next=solicitacao">Completar cadastro</a>
+    </div>
+  </section>
+
+  <!-- formulário -->
+  <div class="req-layout" id="reqForm" hidden>
+    <form class="req-card" id="requestForm" novalidate>
+      <h1>Nova solicitação</h1>
+      <p class="req-muted" id="helloLine">Preencha e envie. A loja recebe na hora.</p>
+      <div class="form-msg" role="alert" id="formMsg"></div>
+
+      <fieldset>
+        <legend>1. O que você precisa?</legend>
+        <div class="segmented req-kinds" id="kindGroup" role="radiogroup" aria-label="Tipo de solicitação"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>2. Produtos</legend>
+        <div class="req-items" id="itemsBox"></div>
+        <a class="req-link" href="index.html#produtos">+ Adicionar produtos do catálogo</a>
+      </fieldset>
+
+      <fieldset>
+        <legend>3. Detalhes</legend>
+        <div class="field">
+          <label for="message" id="messageLabel">Descreva sua solicitação</label>
+          <textarea id="message" name="message" maxlength="1000" rows="4"></textarea>
+          <span class="hint"><span id="messageCount">0</span>/1000</span>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>4. Atendimento</legend>
+        <div class="field">
+          <label for="storeSelect">Loja</label>
+          <select id="storeSelect" name="store"></select>
+        </div>
+        <div class="field">
+          <span class="label">Como prefere receber?</span>
+          <div class="segmented" role="radiogroup" aria-label="Recebimento">
+            <input type="radio" name="delivery" id="dlv1" value="entrega" checked><label for="dlv1">🛵 Entrega</label>
+            <input type="radio" name="delivery" id="dlv2" value="retirada"><label for="dlv2">🏪 Retirar na loja</label>
+          </div>
+          <p class="req-address" id="addressLine"></p>
+        </div>
+        <div class="field">
+          <span class="label">Pagamento (na entrega ou retirada)</span>
+          <div class="segmented" id="payGroup" role="radiogroup" aria-label="Forma de pagamento"></div>
+        </div>
+        <div class="field">
+          <span class="label">Contato preferido</span>
+          <div class="segmented" role="radiogroup" aria-label="Contato preferido">
+            <input type="radio" name="contact" id="ct1" value="WhatsApp" checked><label for="ct1">WhatsApp</label>
+            <input type="radio" name="contact" id="ct2" value="Ligação"><label for="ct2">Ligação</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <button class="btn btn-primary btn-block" type="submit" id="sendBtn">Enviar solicitação</button>
+      <p class="secure-note">🔒 Seus dados vão criptografados e só a equipe da loja consegue abrir.</p>
+    </form>
+
+    <aside class="req-side">
+      <div class="req-card">
+        <h2>Resumo</h2>
+        <dl class="req-summary">
+          <div><dt>Itens</dt><dd id="sumItems">0</dd></div>
+          <div><dt>Total estimado</dt><dd id="sumTotal">R$ 0,00</dd></div>
+        </dl>
+        <p class="hint">Valores e estoque são confirmados pela loja.</p>
+      </div>
+      <div class="req-card">
+        <h2>Como funciona</h2>
+        <ol class="req-steps">
+          <li><b>Você envia</b> e recebe o número da solicitação.</li>
+          <li><b>Pendente:</b> a loja recebe na hora no painel.</li>
+          <li><b>Em andamento:</b> a equipe está separando ou respondendo.</li>
+          <li><b>Concluído:</b> entregue, retirado ou respondido.</li>
+        </ol>
+      </div>
+    </aside>
+  </div>
+
+  <!-- enviado -->
+  <section class="req-card req-center" id="reqDone" hidden>
+    <span class="req-emoji" aria-hidden="true">🎉</span>
+    <p class="req-muted">Solicitação enviada com sucesso</p>
+    <p class="req-number" id="doneNumber">#0000</p>
+    <dl class="req-summary wide">
+      <div><dt>Data e horário</dt><dd id="doneDate"></dd></div>
+      <div><dt>Status</dt><dd><span class="status pendente" id="doneStatus">Pendente</span></dd></div>
+      <div><dt>Loja</dt><dd id="doneStore"></dd></div>
+      <div><dt>Tipo</dt><dd id="doneKind"></dd></div>
+    </dl>
+    <p class="req-muted">Guarde o número. Você acompanha o andamento em <b>Minha conta</b>.</p>
+    <div class="req-actions">
+      <a class="btn btn-primary" href="login.html">Acompanhar solicitação</a>
+      <button type="button" class="btn btn-ghost" id="newRequest">Nova solicitação</button>
+      <a class="btn btn-ghost" id="doneWhats" target="_blank" rel="noopener">Avisar no WhatsApp</a>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/crypto.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
+<script src="js/api.js"></script>
+<script src="js/solicitacao.js"></script>
+</body>
+</html>

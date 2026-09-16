@@ -1,317 +1,537 @@
-// Pet Tem Home — painel de comandas (HUD da loja)
+// Pet Tem Home — painel administrativo da loja
 //
-// A chave privada é gerada aqui, como NÃO exportável, e guardada no cofre
-// (IndexedDB) deste computador. Só este painel abre as comandas.
+// Fluxo: login da equipe → abrir o cofre (senha do cofre) → painel.
+// Os dados chegam cifrados do banco e só são abertos aqui, com a chave da loja.
 
 (function () {
   "use strict";
 
-  var C = window.PetCrypto;
   var API = window.PetAPI;
   var CFG = window.PET_CONFIG;
-  var $ = function (sel) { return document.querySelector(sel); };
-
-  var PRIVATE_KEY_NAME = "store-private-key";
-  var LOCAL_PUB = "ptm_panel_pubkey";
+  var $ = function (sel, root) { return (root || document).querySelector(sel); };
+  var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
 
   var money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-  var timeFmt = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
+  var dateTime = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  var dateOnly = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
+  var GATES = ["gateLoading", "gateLogin", "gateVault", "dashboard"];
   var COLUMNS = [
-    { id: "novo", label: "🟡 Novos", next: "separando", nextLabel: "Separar" },
-    { id: "separando", label: "📦 Separando", next: "saiu", nextLabel: "Saiu / pronto" },
-    { id: "saiu", label: "🛵 A caminho", next: "entregue", nextLabel: "Concluir" },
-    { id: "entregue", label: "✅ Concluídos", next: null }
+    { id: "pendente", label: "🟡 Pendentes" },
+    { id: "em_andamento", label: "🔵 Em andamento" },
+    { id: "concluido", label: "✅ Concluídas" }
   ];
 
   var state = {
-    privateKey: null,
+    view: "requests",
     store: "todas",
-    showCipher: false,
-    sound: false,
-    seen: null,
-    cache: {}
+    q: "",
+    cq: "",
+    onlyNew: false,
+    mobileCol: "pendente",
+    sound: localStorage.getItem("ptm_panel_sound") === "1",
+    requests: [],
+    customers: [],
+    known: null,
+    unsub: null,
+    timer: null,
+    vaultMode: "unlock"
   };
 
+  function show(id) { GATES.forEach(function (g) { $("#" + g).hidden = g !== id; }); }
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
-    if (text !== undefined) n.textContent = text;
+    if (text !== undefined && text !== null) n.textContent = text;
     return n;
   }
-
+  function link(text, href, blank) {
+    var a = el("a", "", text);
+    a.href = href;
+    if (blank) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
+    return a;
+  }
   function toast(msg) {
     var t = $("#toast");
     t.textContent = msg;
     t.classList.add("show");
     setTimeout(function () { t.classList.remove("show"); }, 2600);
   }
-
+  function showMsg(form, text, type) {
+    var box = $("[data-msg]", form);
+    box.textContent = text;
+    box.className = "form-msg show " + (type || "error");
+  }
+  function clearMsg(form) { $("[data-msg]", form).className = "form-msg"; }
   function ago(ts) {
+    if (!ts) return "";
     var m = Math.floor((Date.now() - ts) / 60000);
     if (m < 1) return "agora";
     if (m < 60) return "há " + m + " min";
     var h = Math.floor(m / 60);
-    return h < 24 ? "há " + h + " h" : new Date(ts).toLocaleDateString("pt-BR");
+    if (h < 24) return "há " + h + " h";
+    var d = Math.floor(h / 24);
+    return "há " + d + (d === 1 ? " dia" : " dias");
   }
+  function digits(s) { return String(s || "").replace(/\D/g, ""); }
+  function normalize(s) { return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
 
-  // ---------- chave do painel ----------
-  async function ensureKeys() {
-    var priv = await C.vaultGet(PRIVATE_KEY_NAME);
-    var pub = JSON.parse(localStorage.getItem(LOCAL_PUB) || "null");
-    if (!priv || !pub) {
-      var pair = await C.generateStoreKeyPair();
-      await C.vaultSet(PRIVATE_KEY_NAME, pair.privateKey);
-      localStorage.setItem(LOCAL_PUB, JSON.stringify(pair.publicJwk));
-      priv = pair.privateKey;
-      pub = pair.publicJwk;
-    }
-    state.privateKey = priv;
-    API.publishStorePublicKey(pub);
-
-    var fp = await C.publicKeyFingerprint(pub);
-    $("#keyChip").textContent = "🔑 Chave ativa · " + fp;
-
-    if (CFG.storePublicKeyJwk && (CFG.storePublicKeyJwk.x !== pub.x || CFG.storePublicKeyJwk.y !== pub.y)) {
-      $("#demoNote").textContent = "Atenção: a chave pública em js/config.js é de outro painel. Pedidos novos não poderão ser abertos aqui.";
-    }
-
-    $("#copyKeyBtn").addEventListener("click", async function () {
-      var text = JSON.stringify({ kty: pub.kty, crv: pub.crv, x: pub.x, y: pub.y });
-      try {
-        await navigator.clipboard.writeText(text);
-        toast("Chave pública copiada. Cole em storePublicKeyJwk no js/config.js");
-      } catch (e) {
-        window.prompt("Copie a chave pública:", text);
-      }
-    });
-  }
-
-  async function open(order) {
-    if (state.cache[order.id] !== undefined) return state.cache[order.id];
-    try {
-      state.cache[order.id] = await C.openSealed(order.forStore, state.privateKey);
-    } catch (e) {
-      state.cache[order.id] = null;
-    }
-    return state.cache[order.id];
-  }
-
-  // ---------- som de nova comanda ----------
+  // ================= som =================
   var audioCtx = null;
   function beep() {
     if (!state.sound) return;
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    [880, 1175].forEach(function (freq, i) {
-      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
-      o.frequency.value = freq;
-      o.connect(g); g.connect(audioCtx.destination);
-      var t = audioCtx.currentTime + i * 0.16;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
-      o.start(t); o.stop(t + 0.16);
-    });
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      [880, 1175, 1480].forEach(function (freq, i) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.frequency.value = freq;
+        o.connect(g); g.connect(audioCtx.destination);
+        var t = audioCtx.currentTime + i * 0.15;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+        o.start(t); o.stop(t + 0.15);
+      });
+    } catch (e) { /* sem áudio */ }
+  }
+  function paintSound() {
+    $("#soundBtn").firstChild.textContent = state.sound ? "🔔 " : "🔕 ";
+    $("#soundBtn").setAttribute("aria-pressed", String(state.sound));
   }
   $("#soundBtn").addEventListener("click", function () {
     state.sound = !state.sound;
-    this.textContent = state.sound ? "🔔 Som" : "🔕 Som";
-    this.setAttribute("aria-pressed", String(state.sound));
+    localStorage.setItem("ptm_panel_sound", state.sound ? "1" : "0");
+    paintSound();
     if (state.sound) beep();
   });
+  paintSound();
 
-  $("#cipherBtn").addEventListener("click", function () {
-    state.showCipher = !state.showCipher;
-    this.setAttribute("aria-pressed", String(state.showCipher));
-    this.textContent = state.showCipher ? "Ocultar dados cifrados" : "Ver dados cifrados";
-    render();
+  // ================= portões de acesso =================
+  async function boot() {
+    stopLive();
+    show("gateLoading");
+    try {
+      var session = await API.staffSession();
+      if (!session) { show("gateLogin"); return; }
+      if (!session.isStaff) {
+        await API.staffLogout();
+        show("gateLogin");
+        showMsg($("#staffForm"), "Esta conta não tem acesso ao painel. O painel é exclusivo da equipe da loja.");
+        return;
+      }
+      $("#staffEmailLabel").textContent = session.demo ? "· demonstração" : "· " + (session.email || "");
+      var vault = await API.vaultStatus();
+      if (vault === "unlocked") { startDashboard(); return; }
+      setVaultMode(vault === "missing" ? "create" : "unlock");
+      show("gateVault");
+      $("#vaultPass").focus();
+    } catch (err) {
+      show("gateLogin");
+      showMsg($("#staffForm"), err.message);
+    }
+  }
+
+  $("#staffForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var form = e.target, btn = $("button[type=submit]", form);
+    clearMsg(form);
+    btn.disabled = true;
+    btn.textContent = "Entrando…";
+    try {
+      await API.staffLogin(form.elements.email.value, form.elements.password.value);
+      form.reset();
+      await boot();
+    } catch (err) {
+      showMsg(form, err.message);
+      form.elements.password.value = "";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Entrar no painel";
+    }
   });
 
-  $("#resetBtn").addEventListener("click", function () {
-    if (!window.confirm("Apagar contas, pedidos e atividades de demonstração deste navegador?")) return;
-    API.clearDemoData();
-    state.cache = {};
-    render();
-    toast("Dados de demonstração apagados.");
+  function setVaultMode(mode) {
+    state.vaultMode = mode;
+    var creating = mode === "create";
+    $("#vaultTitle").textContent = creating ? "Criar o cofre da loja" : "Abrir o cofre da loja";
+    $("#vaultLead").textContent = creating
+      ? "Primeiro acesso: crie a senha do cofre. Ela protege os dados de todos os clientes e solicitações."
+      : "Digite a senha do cofre para ver os dados dos clientes e das solicitações.";
+    $("#vaultWarn").hidden = !creating;
+    $("#vaultConfirmField").hidden = !creating;
+    $("#vaultBtn").textContent = creating ? "Criar cofre e entrar" : "Abrir cofre";
+    $("#vaultPass").autocomplete = creating ? "new-password" : "off";
+  }
+
+  $("#vaultForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var form = e.target, btn = $("#vaultBtn"), label = btn.textContent;
+    clearMsg(form);
+    var pass = form.elements.pass.value;
+    var remember = form.elements.remember.checked;
+    if (state.vaultMode === "create" && pass !== form.elements.pass2.value) {
+      showMsg(form, "As senhas do cofre não são iguais.");
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Protegendo…";
+    try {
+      if (state.vaultMode === "create") await API.vaultCreate(pass, remember);
+      else await API.vaultUnlock(pass, remember);
+      form.reset();
+      startDashboard();
+    } catch (err) {
+      showMsg(form, err.message);
+      form.elements.pass.value = "";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
   });
 
-  // ---------- filtros por loja ----------
-  var tabs = $("#storeTabs");
-  [{ id: "todas", name: "Todas as lojas" }].concat(CFG.stores).forEach(function (s) {
-    var b = el("button", "chip", s.id === "todas" ? s.name : s.name + " · " + s.district);
-    b.type = "button";
-    b.setAttribute("aria-pressed", s.id === state.store ? "true" : "false");
-    b.addEventListener("click", function () {
-      state.store = s.id;
-      Array.prototype.forEach.call(tabs.children, function (c) { c.setAttribute("aria-pressed", c === b ? "true" : "false"); });
-      render();
+  $$("[data-logout]").forEach(function (b) {
+    b.addEventListener("click", async function () {
+      await API.staffLogout();
+      state.known = null;
+      toast("Você saiu do painel.");
+      boot();
     });
-    tabs.appendChild(b);
   });
 
-  // ---------- comanda ----------
+  $("#lockBtn").addEventListener("click", async function () {
+    await API.vaultLock();
+    state.known = null;
+    toast("Cofre trancado.");
+    boot();
+  });
+
+  // ================= painel =================
+  function startDashboard() {
+    show("dashboard");
+    $("#demoBar").hidden = API.mode !== "demo";
+    refresh();
+    state.unsub = API.subscribe(scheduleRefresh);
+    state.timer = setInterval(refresh, 20000);
+  }
+  function stopLive() {
+    if (state.unsub) { state.unsub(); state.unsub = null; }
+    if (state.timer) { clearInterval(state.timer); state.timer = null; }
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && !$("#dashboard").hidden) refresh();
+  });
+
+  var refreshing = false, again = false, debounce = null;
+  function scheduleRefresh() {
+    clearTimeout(debounce);
+    debounce = setTimeout(refresh, 300);
+  }
+
+  async function refresh() {
+    if ($("#dashboard").hidden) return;
+    if (refreshing) { again = true; return; }
+    refreshing = true;
+    try {
+      var list = await API.listRequests();
+      var fresh = [];
+      if (state.known) {
+        list.forEach(function (r) { if (!state.known[r.id]) fresh.push(r); });
+      }
+      state.known = {};
+      list.forEach(function (r) { state.known[r.id] = true; });
+      state.requests = list;
+      if (fresh.length) {
+        beep();
+        toast(fresh.length === 1 ? "Nova solicitação " + fresh[0].code + "!" : fresh.length + " novas solicitações!");
+      }
+      renderRequests();
+      if (state.view === "customers") {
+        state.customers = await API.listCustomers();
+        renderCustomers();
+      }
+      setLive(true);
+    } catch (err) {
+      if (err.code === "LOCKED" || err.code === "FORBIDDEN") { boot(); return; }
+      setLive(false, err.message);
+    } finally {
+      refreshing = false;
+      if (again) { again = false; refresh(); }
+    }
+  }
+
+  function setLive(ok, message) {
+    var live = $("#live");
+    live.classList.toggle("off", !ok);
+    live.textContent = ok ? "ao vivo · " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "sem conexão";
+    live.title = message || "";
+  }
+
+  $("#refreshBtn").addEventListener("click", function () { refresh(); toast("Atualizado."); });
+
+  // ---------- abas principais ----------
+  $$("[data-view]").forEach(function (b) {
+    b.addEventListener("click", async function () {
+      state.view = b.getAttribute("data-view");
+      $$("[data-view]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      $("#viewRequests").hidden = state.view !== "requests";
+      $("#viewCustomers").hidden = state.view !== "customers";
+      if (state.view === "customers") {
+        $("#customers").textContent = "Carregando clientes…";
+        try {
+          state.customers = await API.listCustomers();
+          renderCustomers();
+        } catch (err) { $("#customers").textContent = err.message; }
+      }
+    });
+  });
+
+  // ---------- filtros ----------
+  (function fillStores() {
+    var sel = $("#storeFilter");
+    var all = el("option", "", "Todas as lojas");
+    all.value = "todas";
+    sel.appendChild(all);
+    CFG.stores.forEach(function (s) {
+      var o = el("option", "", s.name + " · " + s.district);
+      o.value = s.id;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", function () { state.store = sel.value; renderRequests(); });
+  })();
+  $("#searchRequests").addEventListener("input", function () { state.q = this.value; renderRequests(); });
+  $("#onlyNew").addEventListener("change", function () { state.onlyNew = this.checked; renderRequests(); });
+  $("#searchCustomers").addEventListener("input", function () { state.cq = this.value; renderCustomers(); });
+
+  // ---------- solicitações ----------
+  function matches(r) {
+    if (state.store !== "todas" && r.storeId !== state.store) return false;
+    if (state.onlyNew && r.seen) return false;
+    var q = normalize(state.q.trim());
+    if (!q) return true;
+    var d = r.data || {};
+    var hay = normalize([r.code, r.number, r.kind, d.customer && d.customer.name, d.customer && d.customer.phone, d.message].join(" "));
+    return hay.indexOf(q) !== -1 || (digits(q) && digits(d.customer && d.customer.phone).indexOf(digits(q)) !== -1);
+  }
+
+  function renderStats(all) {
+    var box = $("#stats");
+    box.innerHTML = "";
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var stats = [
+      [all.filter(function (r) { return !r.seen; }).length, "Novas"],
+      [all.filter(function (r) { return r.status === "pendente"; }).length, "Pendentes"],
+      [all.filter(function (r) { return r.status === "em_andamento"; }).length, "Em andamento"],
+      [all.filter(function (r) { return r.createdAt >= today.getTime(); }).length, "Recebidas hoje"]
+    ];
+    stats.forEach(function (s) {
+      var d = el("div", "stat");
+      d.appendChild(el("b", "", String(s[0])));
+      d.appendChild(el("span", "", s[1]));
+      box.appendChild(d);
+    });
+  }
+
+  function renderRequests() {
+    var all = state.requests;
+    var visible = all.filter(matches);
+    var newCount = all.filter(function (r) { return !r.seen; }).length;
+
+    renderStats(all);
+    var badge = $("#newCount");
+    badge.hidden = newCount === 0;
+    badge.textContent = "🔴 " + newCount + (newCount === 1 ? " nova" : " novas");
+    document.title = (newCount ? "(" + newCount + ") " : "") + "Painel da Loja — Pet Tem Home";
+
+    var tabs = $("#colTabs");
+    tabs.innerHTML = "";
+    var board = $("#board");
+    board.innerHTML = "";
+
+    COLUMNS.forEach(function (col) {
+      var items = visible.filter(function (r) { return r.status === col.id; });
+      if (col.id === "concluido") items = items.slice(0, 60);
+
+      var tab = el("button", "", col.label.replace(/^\S+\s/, "") + " (" + items.length + ")");
+      tab.type = "button";
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-selected", String(state.mobileCol === col.id));
+      tab.addEventListener("click", function () { state.mobileCol = col.id; renderRequests(); });
+      tabs.appendChild(tab);
+
+      var box = el("section", "col" + (state.mobileCol === col.id ? " active" : ""));
+      var head = el("div", "col-head", col.label);
+      head.appendChild(el("span", "", String(items.length)));
+      box.appendChild(head);
+      var listEl = el("div", "col-list");
+      if (!items.length) listEl.appendChild(el("p", "empty-col", "Nenhuma solicitação aqui"));
+      items.forEach(function (r) { listEl.appendChild(buildCard(r)); });
+      box.appendChild(listEl);
+      board.appendChild(box);
+    });
+  }
+
   function section(label, content) {
-    var s = el("div", "c-sec");
+    var s = el("div", "sec");
     s.appendChild(el("span", "k", label));
     if (typeof content === "string") s.appendChild(document.createTextNode(content));
     else s.appendChild(content);
     return s;
   }
 
-  function buildCard(order, data, col, isFresh) {
-    var card = el("article", "comanda " + order.status + (isFresh ? " fresh" : ""));
-    var top = el("div", "c-top");
-    top.appendChild(el("span", "", data ? data.code : "Comanda"));
-    top.appendChild(el("span", "", timeFmt.format(order.createdAt) + " · " + ago(order.createdAt)));
+  function actionButton(text, cls, fn) {
+    var b = el("button", cls, text);
+    b.type = "button";
+    b.addEventListener("click", async function () {
+      b.disabled = true;
+      try { await fn(); await refresh(); }
+      catch (err) { toast(err.message); b.disabled = false; }
+    });
+    return b;
+  }
+
+  function buildCard(r) {
+    var d = r.data;
+    var card = el("article", "req " + r.status + (r.seen ? "" : " is-new"));
+
+    var top = el("div", "req-top");
+    var left = el("div");
+    left.appendChild(el("span", "req-num", r.code));
+    if (!r.seen) {
+      left.appendChild(document.createTextNode(" "));
+      left.appendChild(el("span", "badge-new", "NOVA"));
+    }
+    top.appendChild(left);
+    top.appendChild(el("span", "req-when", ago(r.createdAt)));
     card.appendChild(top);
 
-    if (!data) {
-      card.appendChild(el("p", "locked", "🔒 Comanda lacrada para outro painel. Esta chave não consegue abri-la."));
-    } else {
-      var head = el("p", "c-head");
-      head.appendChild(el("b", "", API.firstName(data.customer.name)));
-      var first = data.items[0];
-      var more = data.items.length > 1 ? " e mais " + (data.items.length - 1) + " item(ns)" : "";
-      head.appendChild(document.createTextNode(" solicitou " + first.qty + "× " + first.name + more));
-      card.appendChild(head);
+    var chips = el("div", "chips-row");
+    var store = API.storeById(r.storeId);
+    [r.kind, store ? store.name : r.storeId, r.delivery === "entrega" ? "🛵 Entrega" : "🏪 Retirada"].forEach(function (t) {
+      chips.appendChild(el("span", "chip-s", t));
+    });
+    card.appendChild(chips);
 
-      var list = el("ul", "c-items");
-      data.items.forEach(function (i) { list.appendChild(el("li", "", i.qty + "× " + i.name + " — " + money.format(i.price * i.qty))); });
-      card.appendChild(section("Itens", list));
+    if (!d) {
+      card.appendChild(el("p", "locked", "🔒 Não foi possível abrir os dados desta solicitação com a chave atual."));
+    } else {
+      var who = el("p", "req-who");
+      who.appendChild(el("b", "", d.customer.name));
+      if (d.items && d.items.length) {
+        var first = d.items[0];
+        who.appendChild(document.createTextNode(" solicitou " + first.qty + "× " + first.name + (d.items.length > 1 ? " e mais " + (d.items.length - 1) : "")));
+      } else {
+        who.appendChild(document.createTextNode(" enviou: " + r.kind.toLowerCase()));
+      }
+      card.appendChild(who);
 
       var contact = el("div");
-      contact.appendChild(document.createTextNode(data.customer.name + " · "));
-      var tel = el("a", "", data.customer.phone);
-      tel.href = "tel:" + String(data.customer.phone).replace(/\D/g, "");
-      contact.appendChild(tel);
+      var phone = digits(d.customer.phone);
+      contact.appendChild(link(d.customer.phone, "tel:" + phone));
+      contact.appendChild(document.createTextNode(" · "));
+      contact.appendChild(link("WhatsApp ↗", "https://wa.me/55" + phone.replace(/^55/, "") + "?text=" + encodeURIComponent("Olá, " + API.firstName(d.customer.name) + "! Aqui é da Pet Tem Home, sobre a solicitação " + r.code + "."), true));
+      if (d.contact) contact.appendChild(document.createTextNode(" · prefere " + d.contact));
       card.appendChild(section("Cliente", contact));
 
-      if (data.delivery.type === "entrega" && data.delivery.address) {
-        var a = data.delivery.address;
+      if (d.items && d.items.length) {
+        var ul = el("ul");
+        d.items.forEach(function (i) { ul.appendChild(el("li", "", i.qty + "× " + i.name + " — " + money.format(i.price * i.qty))); });
+        card.appendChild(section("Itens", ul));
+      }
+      if (d.message) card.appendChild(section("Mensagem", d.message));
+
+      if (r.delivery === "entrega" && d.delivery && d.delivery.address) {
+        var a = d.delivery.address;
         var addr = el("div");
         addr.appendChild(document.createTextNode(a.street + ", " + a.number + (a.complement ? " – " + a.complement : "")));
         addr.appendChild(el("br"));
         addr.appendChild(document.createTextNode(a.district + (a.cep ? " · CEP " + a.cep : "") + (a.city ? " · " + a.city : "")));
         if (a.reference) { addr.appendChild(el("br")); addr.appendChild(document.createTextNode("Ref.: " + a.reference)); }
-        var route = el("a", "", "Abrir rota ↗");
-        route.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(a.street + ", " + a.number + ", " + a.district + ", " + (a.city || "Francisco Morato - SP"));
-        route.target = "_blank"; route.rel = "noopener noreferrer";
-        addr.appendChild(el("br")); addr.appendChild(route);
-        card.appendChild(section("🛵 Entregar em", addr));
-      } else {
-        card.appendChild(section("🏪 Retirada", data.store));
+        addr.appendChild(el("br"));
+        addr.appendChild(link("Abrir rota ↗", "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(a.street + ", " + a.number + ", " + a.district + ", " + (a.city || "Francisco Morato - SP")), true));
+        card.appendChild(section("Entregar em", addr));
       }
 
-      card.appendChild(section("Pagamento", data.payment + (data.notes ? " · Obs.: " + data.notes : "")));
-      var total = el("div", "c-total");
-      total.appendChild(el("span", "", data.store));
-      total.appendChild(el("b", "", money.format(data.total)));
-      card.appendChild(total);
+      card.appendChild(section("Pagamento", d.payment));
+      if (d.total) {
+        var total = el("div", "total");
+        total.appendChild(el("span", "", "Total estimado"));
+        total.appendChild(el("b", "", money.format(d.total)));
+        card.appendChild(total);
+      }
     }
 
-    if (state.showCipher) {
-      card.appendChild(el("div", "cipher", "Como está salvo no banco:\n" + JSON.stringify(order.forStore)));
-    }
+    var times = el("p", "times", "Recebida " + dateTime.format(r.createdAt));
+    if (r.status !== "pendente" && r.statusChangedAt) times.textContent += " · " + API.STATUS_LABEL[r.status] + " " + dateTime.format(r.statusChangedAt);
+    card.appendChild(times);
 
-    var actions = el("div", "c-actions");
-    if (col.next) {
-      var next = el("button", "primary", col.nextLabel);
-      next.type = "button";
-      next.addEventListener("click", function () { API.setOrderStatus(order.id, col.next); render(); });
-      actions.appendChild(next);
+    var actions = el("div", "actions");
+    if (r.status === "pendente") {
+      actions.appendChild(actionButton("▶ Iniciar atendimento", "primary", function () { return API.setStatus(r.id, "em_andamento"); }));
+    } else if (r.status === "em_andamento") {
+      actions.appendChild(actionButton("✓ Concluir", "primary", function () { return API.setStatus(r.id, "concluido"); }));
+      actions.appendChild(actionButton("↩ Pendente", "", function () { return API.setStatus(r.id, "pendente"); }));
+    } else {
+      actions.appendChild(actionButton("↺ Reabrir", "", function () { return API.setStatus(r.id, "em_andamento"); }));
     }
-    if (order.status !== "entregue" && order.status !== "cancelado") {
-      var cancel = el("button", "", "Cancelar");
-      cancel.type = "button";
-      cancel.addEventListener("click", function () {
-        if (window.confirm("Cancelar esta comanda?")) { API.setOrderStatus(order.id, "cancelado"); render(); }
-      });
-      actions.appendChild(cancel);
-    }
-    if (actions.children.length) card.appendChild(actions);
+    if (!r.seen) actions.appendChild(actionButton("👁 Marcar como vista", "", function () { return API.markSeen(r.id); }));
+    card.appendChild(actions);
     return card;
   }
 
-  // ---------- render ----------
-  var rendering = false, pending = false;
-  async function render() {
-    if (!state.privateKey) return;
-    if (rendering) { pending = true; return; }
-    rendering = true;
-    try {
-      var orders = API.rawOrders().filter(function (o) { return state.store === "todas" || o.storeId === state.store; });
-      var opened = await Promise.all(orders.map(open));
-
-      var ids = API.rawOrders().map(function (o) { return o.id; });
-      var fresh = {};
-      if (state.seen) {
-        ids.forEach(function (id) { if (!state.seen[id]) fresh[id] = true; });
-        if (Object.keys(fresh).length) beep();
-      }
-      state.seen = state.seen || {};
-      ids.forEach(function (id) { state.seen[id] = true; });
-
-      var board = $("#board");
-      board.innerHTML = "";
-      COLUMNS.forEach(function (col) {
-        var items = orders.map(function (o, i) { return { o: o, d: opened[i] }; })
-          .filter(function (x) { return col.id === "entregue" ? (x.o.status === "entregue" || x.o.status === "cancelado") : x.o.status === col.id; });
-        var box = el("section", "col");
-        var head = el("div", "col-head", col.label);
-        head.appendChild(el("span", "", String(items.length)));
-        box.appendChild(head);
-        var list = el("div", "col-list");
-        if (!items.length) list.appendChild(el("p", "empty-col", "Nenhuma comanda"));
-        items.forEach(function (x) { list.appendChild(buildCard(x.o, x.d, col, fresh[x.o.id])); });
-        box.appendChild(list);
-        board.appendChild(box);
-      });
-
-      await renderFeed();
-      var novos = orders.filter(function (o) { return o.status === "novo"; }).length;
-      document.title = (novos ? "(" + novos + ") " : "") + "Painel de Comandas — Pet Tem Home";
-    } finally {
-      rendering = false;
-      if (pending) { pending = false; render(); }
+  // ---------- clientes ----------
+  function renderCustomers() {
+    var box = $("#customers");
+    var q = normalize(state.cq.trim());
+    var list = state.customers.filter(function (c) {
+      if (!q) return true;
+      var p = c.profile || {};
+      var a = p.address || {};
+      var hay = normalize([p.name, p.email, p.phone, a.district, a.street].join(" "));
+      return hay.indexOf(q) !== -1 || (digits(q) && digits(p.phone).indexOf(digits(q)) !== -1);
+    });
+    $("#customerCount").textContent = list.length + (list.length === 1 ? " cliente" : " clientes");
+    box.innerHTML = "";
+    if (!list.length) {
+      box.appendChild(el("p", "empty-col", "Nenhum cliente encontrado."));
+      return;
     }
-  }
-
-  async function renderFeed() {
-    var feed = $("#feed");
-    var events = API.rawEvents().slice(0, 40).map(function (e) { return { kind: "event", at: e.at, raw: e }; });
-    var orders = API.rawOrders().slice(0, 40).map(function (o) { return { kind: "order", at: o.createdAt, raw: o }; });
-    var all = events.concat(orders).sort(function (a, b) { return b.at - a.at; }).slice(0, 40);
-
-    var rows = await Promise.all(all.map(async function (item) {
-      var li = el("li");
-      var text = el("div");
-      if (item.kind === "order") {
-        var d = await open(item.raw);
-        li.appendChild(el("i", "", "🧾"));
-        text.appendChild(document.createTextNode(d
-          ? API.firstName(d.customer.name) + " solicitou " + d.items[0].qty + "× " + d.items[0].name + (d.items.length > 1 ? " e mais itens" : "")
-          : "Nova comanda (lacrada para outro painel)"));
-      } else {
-        var ev = null;
-        try { ev = await C.openSealed(item.raw.box, state.privateKey); } catch (e) { ev = null; }
-        li.appendChild(el("i", "", ev && ev.type === "signup" ? "🌱" : "👋"));
-        text.appendChild(document.createTextNode(ev
-          ? ev.name + (ev.type === "signup" ? " criou uma conta" : " fez login")
-          : "Atividade lacrada"));
+    list.forEach(function (c) {
+      var p = c.profile;
+      var card = el("article", "cust");
+      if (!p) {
+        card.appendChild(el("h3", "", "🔒 Cadastro protegido"));
+        card.appendChild(el("p", "", "Não foi possível abrir com a chave atual."));
+        box.appendChild(card);
+        return;
       }
-      text.appendChild(el("small", "", ago(item.at)));
-      li.appendChild(text);
-      return li;
-    }));
-
-    feed.innerHTML = "";
-    if (!rows.length) feed.appendChild(el("li", "", "Aguardando clientes… 🐾"));
-    rows.forEach(function (r) { feed.appendChild(r); });
+      card.appendChild(el("h3", "", p.name));
+      var contact = el("p");
+      var phone = digits(p.phone);
+      contact.appendChild(link(p.phone, "tel:" + phone));
+      contact.appendChild(document.createTextNode(" · "));
+      contact.appendChild(link("WhatsApp ↗", "https://wa.me/55" + phone.replace(/^55/, ""), true));
+      card.appendChild(contact);
+      var mail = el("p");
+      mail.appendChild(link(p.email, "mailto:" + p.email));
+      card.appendChild(mail);
+      var a = p.address || {};
+      card.appendChild(el("p", "", a.street + ", " + a.number + (a.complement ? " – " + a.complement : "") + " · " + a.district + (a.cep ? " · CEP " + a.cep : "")));
+      var meta = el("div", "meta");
+      meta.appendChild(el("span", "chip-s", "📦 " + c.requests + (c.requests === 1 ? " solicitação" : " solicitações")));
+      if (c.createdAt) meta.appendChild(el("span", "chip-s", "Cliente desde " + dateOnly.format(c.createdAt)));
+      if (c.lastLoginAt) meta.appendChild(el("span", "chip-s", "Último acesso " + ago(c.lastLoginAt)));
+      card.appendChild(meta);
+      box.appendChild(card);
+    });
   }
 
-  ensureKeys().then(render).catch(function (err) {
-    $("#keyChip").textContent = "⚠️ " + err.message;
+  // ---------- demonstração ----------
+  $("#resetDemo").addEventListener("click", function () {
+    if (!window.confirm("Apagar contas, solicitações e o cofre de demonstração deste navegador?")) return;
+    API.clearDemoData();
+    state.known = null;
+    toast("Demonstração apagada.");
+    boot();
   });
-  API.onChange(render);
-  setInterval(render, 15000);
+
+  boot();
 })();
