@@ -1,0 +1,68 @@
+# Pet Tem Home — configuração para hospedagem tradicional (Apache / cPanel)
+#
+# Este arquivo faz na hospedagem da loja o mesmo que o vercel.json fazia na
+# Vercel: endereços sem ".html", cabeçalhos de segurança e cache das imagens.
+# Envie-o junto com os outros arquivos (ele fica oculto: ative "mostrar
+# arquivos ocultos" no gerenciador de arquivos ou no programa de FTP).
+
+# ---------- Endereços sem .html (ex.: /painel em vez de /painel.html) ----------
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # tira o .html do endereço quando alguém digita com ele
+  RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
+  RewriteRule ^ /%1 [R=301,L]
+
+  # serve o arquivo .html correspondente
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}\.html -f
+  RewriteRule ^(.+?)/?$ $1.html [L]
+</IfModule>
+
+# ---------- Segurança ----------
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "DENY"
+  Header always set Permissions-Policy "camera=(), microphone=(), payment=(), geolocation=(self)"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://tile.openstreetmap.de https://*.basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://tile.openstreetmap.org https://tile.openstreetmap.de https://*.basemaps.cartocdn.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+
+  # o painel não deve aparecer no Google
+  <FilesMatch "^(painel|login|solicitacao)\.html$">
+    Header always set X-Robots-Tag "noindex, nofollow"
+  </FilesMatch>
+</IfModule>
+
+# ---------- Não exibir arquivos internos ----------
+<FilesMatch "(^\.|\.(md|sql|json|yml|bak)$)">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+<IfModule mod_autoindex.c>
+  Options -Indexes
+</IfModule>
+
+# ---------- Cache (imagens e fontes ficam guardadas; páginas, não) ----------
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/jpeg "access plus 30 days"
+  ExpiresByType image/webp "access plus 30 days"
+  ExpiresByType image/svg+xml "access plus 30 days"
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# ---------- Compactação ----------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+# ---------- Página de erro ----------
+ErrorDocument 404 /index.html

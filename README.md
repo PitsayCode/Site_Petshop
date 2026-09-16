@@ -26,7 +26,8 @@ loja. Pagamento é presencial (na entrega ou na retirada).
 ├── solicitacao.html    Formulário de solicitação
 ├── login.html          Entrar, criar conta, recuperar senha, minhas solicitações
 ├── painel.html         Painel da loja
-├── vercel.json         Endereços sem .html e cabeçalhos de segurança
+├── .htaccess           Config. da hospedagem (endereços sem .html, segurança, cache)
+├── vercel.json         Mesma config., caso um dia use Vercel/Netlify
 ├── supabase/schema.sql Banco de dados, regras de acesso e tempo real
 ├── css/styles.css
 └── js/
@@ -47,12 +48,12 @@ loja. Pagamento é presencial (na entrega ou na retirada).
 
 | Modo | Quando | Como funciona |
 |---|---|---|
-| **Demonstração** | `supabaseUrl` vazio em `js/config.js` | Tudo salvo no navegador. Para apresentar: abra `/painel` e o site no **mesmo navegador**. Qualquer e-mail e senha entram como gestor |
+| **Demonstração** | `supabaseUrl` vazio em `js/config.js` | Tudo salvo no navegador. Para apresentar: abra `/painel` e o site no **mesmo navegador**. Só o e-mail da lista `managerEmails` entra como gestor |
 | **Online** | Chaves do Supabase preenchidas | Clientes de qualquer aparelho enviam solicitações e a loja recebe no painel |
 
 ---
 
-## Colocar no ar (gratuito): Supabase + Vercel
+## Colocar no ar: Supabase + hospedagem da loja
 
 ### 1. Criar o banco no Supabase
 1. Crie uma conta em **supabase.com** e clique em **New project** (plano Free).
@@ -61,8 +62,10 @@ loja. Pagamento é presencial (na entrega ou na retirada).
 
 ### 2. Configurar o login
 Em **Authentication → URL Configuration**:
-- **Site URL:** o endereço da Vercel (ex.: `https://site-petshop.vercel.app`)
-- **Redirect URLs:** adicione `https://site-petshop.vercel.app/login`
+- **Site URL:** o endereço do site (ex.: `https://pettemhome.com.br`)
+- **Redirect URLs:** adicione `https://pettemhome.com.br/login`
+
+> Ainda não tem o domínio? Pode deixar para o passo 6 e voltar aqui depois.
 
 Em **Authentication → Sign In / Providers → Email**:
 - Com **Confirm email** ligado, o cliente confirma o e-mail antes de entrar (recomendado).
@@ -96,12 +99,35 @@ A chave publicável pode ficar no código e no GitHub sem problema: é para isso
 que ela existe. Quem protege os dados são as regras (RLS) do `schema.sql` —
 por isso o passo 1 precisa ter sido feito antes.
 
-Depois de preencher, salve, faça commit e push. A Vercel publica sozinha.
+Depois de preencher, salve o arquivo. Ele vai junto quando você enviar o site para a hospedagem (passo 4).
 
-### 4. Publicar na Vercel
-1. Em **vercel.com**, clique em **Add New → Project** e importe o repositório.
-2. Framework Preset: **Other**. Build Command e Output Directory: em branco.
-3. **Deploy**. Cada push no GitHub atualiza o site sozinho.
+### 4. Publicar na hospedagem da loja
+
+O site é feito de arquivos simples, então roda em qualquer hospedagem comum
+(Hostinger, Locaweb, KingHost, HostGator…). O ideal é a loja contratar um plano
+que já venha com **e-mail profissional** (`contato@dominio.com.br`), porque ele
+resolve também o envio de "esqueci minha senha" (passo 6).
+
+1. No painel da hospedagem, abra o **Gerenciador de arquivos** (ou use um
+   programa de FTP, como o FileZilla).
+2. Entre na pasta **`public_html`** (em alguns provedores é `www` ou
+   `htdocs`) — é a pasta que o domínio mostra.
+3. Envie **todo o conteúdo** do projeto para lá: `index.html`, `login.html`,
+   `solicitacao.html`, `painel.html`, as pastas `css/` e `js/`, e o arquivo
+   **`.htaccess`**.
+   - O `.htaccess` começa com ponto, então é um arquivo oculto: ative
+     "mostrar arquivos ocultos" no gerenciador ou no FileZilla.
+   - Não precisa enviar: `README.md`, `supabase/`, `vercel.json`, `.gitignore`.
+4. Ative o **certificado SSL** (HTTPS) no painel da hospedagem. É obrigatório:
+   sem HTTPS o login não funciona.
+5. Abra `https://odominio.com.br` e confira se o site aparece.
+
+> Para atualizar o site depois, envie de novo os arquivos alterados e aumente o
+> número de versão (`?v=`) nos HTML, para o navegador não usar a versão antiga.
+
+**Alternativa sem custo:** se preferir publicar direto do GitHub, dá para usar
+Netlify, Cloudflare Pages ou Vercel (o `vercel.json` já está pronto). Nesse caso
+o e-mail do passo 6 pode ser feito com Resend ou Brevo, que têm plano gratuito.
 
 ### 5. Liberar o painel para o gestor
 1. Crie a conta do gestor em `/login` com o e-mail dele (o "e-mail mestre"),
@@ -116,6 +142,30 @@ on conflict (user_id) do nothing;
 
 3. Entre em `/painel` → aba **Sou o gestor** → **⚙️ Ajustes** → defina o
    **código da equipe**. É esse código que os funcionários vão usar.
+
+### 6. E-mail profissional (para o "esqueci minha senha" sempre chegar)
+
+⚠️ **Sem este passo, o sistema envia no máximo 2 e-mails por hora e sem
+garantia de entrega.** É o serviço de testes do Supabase. Na prática, cliente
+que pedir nova senha pode não receber nada.
+
+1. No painel da hospedagem, crie a conta de e-mail (ex.: `contato@dominio.com.br`)
+   e anote os dados de envio (SMTP). Eles costumam ser:
+   - Servidor: `mail.odominio.com.br`
+   - Porta: `465` (SSL) ou `587` (TLS)
+   - Usuário: o e-mail completo
+   - Senha: a senha da conta de e-mail
+2. No Supabase, vá em **Authentication → SMTP Settings**
+   (`supabase.com/dashboard/project/SEU-PROJETO/auth/smtp`), ative o SMTP
+   personalizado e preencha: servidor, porta, usuário, senha, **e-mail
+   remetente** (`contato@dominio.com.br`) e **nome do remetente**
+   ("Pet Tem Home").
+3. Ainda no Supabase, em **Authentication → Rate Limits**, aumente o limite de
+   e-mails (o padrão depois do SMTP é 30 por hora).
+4. Em **Authentication → URL Configuration**, coloque o domínio da loja em
+   **Site URL** e adicione `https://odominio.com.br/login` em **Redirect URLs**.
+5. Teste de verdade: crie uma conta com um e-mail seu e peça "esqueci minha
+   senha". A mensagem precisa chegar em segundos, com o remetente da loja.
 
 ---
 
@@ -308,7 +358,7 @@ de recuperação ao mesmo tempo, o histórico antigo ficaria ilegível.
 Ficou combinado: publicar assim e avaliar a criptografia numa segunda etapa,
 se o cliente pedir mais rigor. Enquanto isso, o mínimo recomendado é:
 
-- verificação em duas etapas nas contas do Supabase, da Vercel e do GitHub;
+- verificação em duas etapas nas contas do Supabase, da hospedagem e do GitHub;
 - guardar só o necessário do cliente (é o que o formulário pede hoje);
 - apagar a conta quando o cliente pedir (Authentication → Users).
 
@@ -329,7 +379,7 @@ se o cliente pedir mais rigor. Enquanto isso, o mínimo recomendado é:
   para quem administra o banco. É o necessário para atender e entregar.
 - **LGPD:** avise o cliente para que os dados são usados (já está no site) e
   apague a conta quando ele pedir.
-- Proteja o acesso ao GitHub, à Vercel e ao Supabase com senha forte e
+- Proteja o acesso ao GitHub, à hospedagem e ao Supabase com senha forte e
   verificação em duas etapas.
 
 ## Mapa das lojas
