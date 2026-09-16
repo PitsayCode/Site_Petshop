@@ -196,6 +196,46 @@ update public.store_access
 
 ---
 
+## Se você já rodou uma versão anterior do banco
+
+As primeiras versões do `schema.sql` guardavam os dados criptografados e tinham
+outras colunas. Se você chegou a rodar uma delas no Supabase, apague o que
+ficou antes de rodar a versão atual (isso apaga as solicitações e cadastros de
+teste, mas não as contas em Authentication):
+
+```sql
+drop table if exists public.requests cascade;
+drop table if exists public.customers cascade;
+drop table if exists public.store_vault cascade;
+drop table if exists public.store_vault_archive cascade;
+drop function if exists public.store_public_key() cascade;
+drop function if exists public.reset_vault(jsonb, jsonb) cascade;
+```
+
+Depois rode o `supabase/schema.sql` atual normalmente.
+
+## Decisão sobre proteção dos dados
+
+Hoje o sistema usa **controle de acesso**: ninguém entra no painel sem o login
+do gestor ou o código da equipe, e as regras do banco impedem um cliente de ver
+dados de outro. Em troca, quem administra o projeto no Supabase consegue ler os
+dados de contato e entrega.
+
+A alternativa seria **criptografia ponta a ponta**, em que nem o Supabase nem o
+desenvolvedor conseguem ler. Ela não foi adotada agora por um motivo prático:
+para o gestor recuperar o acesso usando só o e-mail, o sistema precisa
+conseguir devolver a chave — e o que o sistema devolve, o administrador também
+alcança. Com criptografia, o gestor continuaria autônomo, mas precisaria
+guardar um **código de recuperação**; perdendo senha, código da equipe e código
+de recuperação ao mesmo tempo, o histórico antigo ficaria ilegível.
+
+Ficou combinado: publicar assim e avaliar a criptografia numa segunda etapa,
+se o cliente pedir mais rigor. Enquanto isso, o mínimo recomendado é:
+
+- verificação em duas etapas nas contas do Supabase, da Vercel e do GitHub;
+- guardar só o necessário do cliente (é o que o formulário pede hoje);
+- apagar a conta quando o cliente pedir (Authentication → Users).
+
 ## Segurança e privacidade
 
 | Dado | Proteção | Quem consegue ver |
