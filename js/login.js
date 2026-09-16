@@ -234,21 +234,42 @@
 
   // ---------- minha conta ----------
   var unsubscribe = null;
+  var requestTab = "novas";   // "novas" = pendentes e em andamento; "antigas" = concluídas
+
+  function selectRequestTab(tab) {
+    requestTab = tab;
+    $("#reqTabs").setAttribute("data-active", tab === "novas" ? "0" : "1");
+    $("#tabNovas").setAttribute("aria-selected", tab === "novas" ? "true" : "false");
+    $("#tabAntigas").setAttribute("aria-selected", tab === "antigas" ? "true" : "false");
+    renderRequests();
+  }
+  $("#tabNovas").addEventListener("click", function () { selectRequestTab("novas"); });
+  $("#tabAntigas").addEventListener("click", function () { selectRequestTab("antigas"); });
 
   async function renderRequests() {
     var list = $("#ordersList");
     var requests;
     try { requests = await API.myRequests(); }
     catch (err) { list.textContent = err.message; return; }
+    var novas = requests.filter(function (r) { return r.status !== "concluido"; });
+    var antigas = requests.filter(function (r) { return r.status === "concluido"; });
+    $("#tabNovas").textContent = "Novas" + (novas.length ? " (" + novas.length + ")" : "");
+    $("#tabAntigas").textContent = "Antigas" + (antigas.length ? " (" + antigas.length + ")" : "");
+
+    var visiveis = requestTab === "novas" ? novas : antigas;
     list.innerHTML = "";
-    if (!requests.length) {
+    if (!visiveis.length) {
       var empty = document.createElement("p");
       empty.className = "hint";
-      empty.textContent = "Você ainda não fez solicitações.";
+      empty.textContent = !requests.length
+        ? "Você ainda não fez solicitações."
+        : requestTab === "novas"
+          ? "Nenhuma solicitação em andamento. As concluídas estão na aba Antigas."
+          : "Nenhuma solicitação concluída ainda.";
       list.appendChild(empty);
       return;
     }
-    requests.forEach(function (r) {
+    visiveis.forEach(function (r) {
       var row = document.createElement("article");
       row.className = "order-row";
       var top = document.createElement("div");
