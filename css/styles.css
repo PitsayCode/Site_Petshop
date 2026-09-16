@@ -85,6 +85,8 @@
 }
 
 *{box-sizing:border-box;}
+/* o atributo hidden precisa vencer display:flex/grid dos blocos abaixo */
+[hidden]{display:none !important;}
 html{scroll-behavior:smooth;scroll-padding-top:84px;}
 html,body{margin:0;padding:0;}
 body{
