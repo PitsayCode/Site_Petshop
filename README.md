@@ -123,6 +123,26 @@ acompanha em `/painel`.
 - **Limite importante:** a criptografia protege os dados guardados, não um site adulterado. Proteja o acesso ao GitHub, à Vercel e ao Supabase com senha forte e verificação em duas etapas.
 - **Trocar a senha pelo "esqueci minha senha":** o cliente confirma os dados de novo, porque a cópia cifrada com a senha antiga não abre mais.
 
+## Mapa das lojas
+
+O mapa usa blocos (tiles) do OpenStreetMap. Esses servidores são mantidos por
+voluntários e às vezes recusam o acesso (erro 403), devolvendo um bloco com o
+aviso "Access blocked" **no formato de imagem** — por isso o site confere a
+resposta de verdade, e não só se a imagem carregou.
+
+Ordem de tentativa, automática:
+
+1. `tile.openstreetmap.org`
+2. `tile.openstreetmap.de`
+3. CARTO Voyager (`basemaps.cartocdn.com`)
+
+Se os três recusarem, aparece um aviso com link para o Google Maps, e os botões
+de rota continuam funcionando. Os créditos do mapa mudam junto com o servidor.
+
+Se o site ficar muito movimentado, vale contratar um serviço próprio de mapas
+(MapTiler ou Stadia Maps têm plano gratuito com chave) e trocar a lista
+`PROVIDERS` em `js/mapa.js`.
+
 ## Personalização
 
 - Produtos e preços: `js/data.js`

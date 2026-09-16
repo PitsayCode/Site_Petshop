@@ -184,18 +184,63 @@
     L.control.zoom({ position: "bottomright", zoomInTitle: "Aproximar", zoomOutTitle: "Afastar" }).addTo(map);
     map.attributionControl.setPrefix(false);
 
-    var tileErrors = 0;
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      referrerPolicy: "strict-origin-when-cross-origin",
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
-    }).on("tileerror", function () {
-      tileErrors++;
-      if (tileErrors === 4) status("O mapa está com dificuldade para carregar. As rotas continuam funcionando.", true);
-    }).on("load", function () {
-      if (tileErrors) status("");
-      tileErrors = 0;
-    }).addTo(map);
+    // Servidores de mapa em ordem de preferência. O OpenStreetMap às vezes
+    // recusa o acesso (erro 403) e devolve o bloco de aviso COMO IMAGEM, então
+    // testamos um bloco antes de montar o mapa e trocamos de servidor se preciso.
+    var OSM_LINK = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+    var PROVIDERS = [
+      { id: "osm", url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", probe: "https://tile.openstreetmap.org/13/3032/4641.png", maxZoom: 19, attribution: OSM_LINK },
+      { id: "osm-de", url: "https://tile.openstreetmap.de/{z}/{x}/{y}.png", probe: "https://tile.openstreetmap.de/13/3032/4641.png", maxZoom: 18, attribution: OSM_LINK },
+      { id: "carto", url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", subdomains: "abcd", probe: "https://a.basemaps.cartocdn.com/rastertiles/voyager/13/3032/4641.png", maxZoom: 20, attribution: OSM_LINK + ' &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>' }
+    ];
+
+    function probe(p) {
+      return fetch(p.probe + "?t=" + Date.now(), { cache: "no-store" })
+        .then(function (r) { return r.ok; })
+        .catch(function () { return false; });
+    }
+
+    function tileFailure() {
+      mapEl.classList.add("map-failed");
+      var box = el("div", "map-error");
+      box.appendChild(el("p", "", "Não foi possível carregar o mapa agora."));
+      var pins = stores.filter(hasPin);
+      box.appendChild(link("", "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(fullAddress(pins[0] || stores[0])), "Ver as lojas no Google Maps ↗"));
+      mapEl.appendChild(box);
+    }
+
+    function useProvider(i) {
+      if (i >= PROVIDERS.length) { tileFailure(); return; }
+      var p = PROVIDERS[i];
+      probe(p).then(function (ok) {
+        if (!ok) { useProvider(i + 1); return; }
+        var layer = L.tileLayer(p.url, {
+          maxZoom: p.maxZoom,
+          subdomains: p.subdomains || "abc",
+          referrerPolicy: "strict-origin-when-cross-origin",
+          attribution: p.attribution
+        }).addTo(map);
+        map.invalidateSize({ pan: false });
+        if (i > 0) status("O servidor principal de mapas está indisponível; usando um alternativo.");
+
+        // O servidor pode recusar só quando o mapa pede vários blocos de uma
+        // vez — e devolve o aviso COMO IMAGEM. Por isso conferimos um bloco de
+        // verdade já usado no mapa: se vier recusado, trocamos de servidor.
+        var lastCheck = 0;
+        layer.on("load", function () {
+          if (Date.now() - lastCheck < 30000) return;
+          lastCheck = Date.now();
+          var img = mapEl.querySelector("img.leaflet-tile");
+          if (!img || !img.src) return;
+          fetch(img.src, { cache: "no-store" }).then(function (r) {
+            if (r.ok) return;
+            map.removeLayer(layer);
+            useProvider(i + 1);
+          }).catch(function () { /* offline: mantém o que já está na tela */ });
+        });
+      });
+    }
+    useProvider(0);
 
     stores.forEach(function (s, i) {
       if (!hasPin(s)) return;
