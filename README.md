@@ -176,6 +176,29 @@ Não existe envio de e-mail: o "esqueci minha senha" avisa que só funciona no
 modo online. Para começar do zero na demonstração, use o botão **Limpar
 demonstração** no painel, que chama `clearDemoData()` em `js/api.js`.
 
+## Problemas comuns
+
+**"Código incorreto" mesmo com o código certo, ou erro 42883 no console**
+As funções do banco usam a extensão `pgcrypto`, que no Supabase fica no schema
+`extensions`. Se você rodou uma versão antiga do `schema.sql`, rode a atual de
+novo (ela já corrige isso). Para conferir pelo SQL Editor:
+
+```sql
+select proname, prosecdef, proconfig
+from pg_proc where proname in ('check_code', 'set_staff_code');
+-- proconfig deve mostrar search_path=public, extensions
+```
+
+**"Sem conexão com o sistema da loja"**
+URL ou chave errada em `js/config.js`, projeto do Supabase pausado (plano
+gratuito pausa após um tempo sem uso) ou internet fora.
+
+**"Este e-mail não tem acesso ao painel"**
+O e-mail não está na lista `managerEmails` do `js/config.js`.
+
+**O gestor entra, mas o painel diz que a conta não tem acesso**
+Falta marcar a conta na tabela `staff` (veja o passo 5 de "Colocar no ar").
+
 ## Manual do administrador (Supabase)
 
 Tudo aqui é feito no painel do Supabase, sem depender de ninguém.

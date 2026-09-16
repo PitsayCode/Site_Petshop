@@ -45,6 +45,14 @@
   }
   function firstName(name) { return String(name || "").trim().split(/\s+/)[0] || "Cliente"; }
   function formatNumber(n) { return "#" + String(n).padStart(4, "0"); }
+
+  // Só estes e-mails entram como gestor (lista em js/config.js).
+  // Lista vazia = qualquer conta marcada como equipe no banco pode entrar.
+  function managerAllowed(email) {
+    var list = (CFG.managerEmails || []).map(function (e) { return String(e).trim().toLowerCase(); });
+    if (!list.length) return true;
+    return list.indexOf(String(email || "").trim().toLowerCase()) !== -1;
+  }
   function storeById(id) { return CFG.stores.filter(function (s) { return s.id === id; })[0]; }
   function iso() { return new Date().toISOString(); }
   function toTime(v) { return v ? new Date(v).getTime() : null; }
@@ -470,11 +478,15 @@
 
   // ================= painel da loja =================
   async function staffLogin(email, password) {
+    if (!managerAllowed(email)) {
+      throw fail("NOT_STAFF", "Este e-mail não tem acesso ao painel. Entre com o e-mail do gestor da loja.");
+    }
     if (MODE === "demo") {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""))) {
         throw fail("VALIDATION", "Informe um e-mail. Na demonstração, qualquer e-mail e senha entram como gestor.");
       }
       localStorage.setItem(PANEL_DEMO, "1");
+      localStorage.setItem(PANEL_DEMO + "_email", String(email).trim().toLowerCase());
       accessMode = "manager";
       return;
     }
@@ -489,15 +501,18 @@
   async function staffSession() {
     if (accessMode === "code") return { isStaff: true, code: true, manager: false, email: "Equipe (código)" };
     if (MODE === "demo") {
-      if (localStorage.getItem(PANEL_DEMO) !== "1") return null;
+      var demoEmail = localStorage.getItem(PANEL_DEMO + "_email") || "";
+      if (localStorage.getItem(PANEL_DEMO) !== "1" || !managerAllowed(demoEmail)) return null;
       accessMode = "manager";
-      return { demo: true, isStaff: true, manager: true, email: "demonstração" };
+      return { demo: true, isStaff: true, manager: true, email: demoEmail || "demonstração" };
     }
     var uid = await A.getUserId();
     if (!uid) return null;
-    var staff = await A.isStaff(uid);
+    var email = await A.getEmail();
+    // além de estar na tabela staff, o e-mail precisa estar na lista do config
+    var staff = managerAllowed(email) && (await A.isStaff(uid));
     if (staff) accessMode = "manager";
-    return { userId: uid, email: await A.getEmail(), isStaff: staff, manager: staff };
+    return { userId: uid, email: email, isStaff: staff, manager: staff };
   }
 
   async function staffLogout() {
@@ -506,6 +521,7 @@
     staffCode = null;
     localStorage.removeItem(CODE_REMEMBER);
     localStorage.removeItem(PANEL_DEMO);
+    localStorage.removeItem(PANEL_DEMO + "_email");
     if (MODE !== "demo" && wasManager) await A.signOut();
     notify();
   }

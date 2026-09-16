@@ -17,8 +17,14 @@ window.PET_CONFIG = {
   //
   // Enquanto ficarem vazios, o site funciona em MODO DEMONSTRAÇÃO: tudo fica
   // salvo só no navegador de quem está usando.
-  supabaseUrl: "",
-  supabaseKey: "",
+  // E-mail(s) que podem entrar no painel como GESTOR. Qualquer outro e-mail
+  // é recusado no login, mesmo com a senha certa. Para trocar de gestor,
+  // altere aqui (e, no modo online, marque a conta na tabela staff do banco).
+  // Lista vazia ([]) = qualquer conta marcada como staff pode entrar.
+  managerEmails: ["victoralexandre608@gmail.com"],
+
+  supabaseUrl: "https://knpcvojrntdehuwbtohd.supabase.co",
+  supabaseKey: "sb_publishable__DcxQUvH65EgSjQTXzkrDg_n4u6A_j0",
 
   // Lojas exibidas no mapa. Coordenadas aproximadas (OpenStreetMap) —
   // confirme no Google Maps com o cliente antes de publicar.

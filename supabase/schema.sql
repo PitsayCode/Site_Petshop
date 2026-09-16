@@ -17,7 +17,9 @@
 -- precisa para atender) e para quem administra este banco.
 -- =====================================================================
 
-create extension if not exists pgcrypto;
+-- No Supabase as extensões ficam no schema "extensions" (não em public)
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 -- ---------------------------------------------------------------------
 -- Equipe da loja (contas que podem abrir o painel como gestor)
@@ -160,7 +162,7 @@ create or replace function public.check_code(p_code text)
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   h text;
@@ -188,7 +190,7 @@ create or replace function public.set_staff_code(p_code text)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   if not public.is_staff() then
