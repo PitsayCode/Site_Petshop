@@ -69,17 +69,34 @@ Em **Authentication → Sign In / Providers → Email**:
 - Para uma apresentação rápida, dá para desligar.
 
 ### 3. Ligar o site ao banco
-Em **Project Settings → API**, copie e cole em `js/config.js`:
+
+Abra o arquivo **`js/config.js`** e preencha estas duas linhas (elas ficam logo
+no começo, vazias por padrão):
 
 ```js
 supabaseUrl: "https://SEU-PROJETO.supabase.co",
-supabaseAnonKey: "a chave anon public",
+supabaseKey: "sb_publishable_...",
 ```
 
-A chave *anon* é pública por natureza; quem protege os dados são as regras
-(RLS) do `schema.sql`. **Nunca** coloque a chave `service_role` no site.
+Onde achar cada valor, no painel do Supabase:
 
-Faça commit e push para o GitHub.
+| O que copiar | Onde está | Como reconhecer |
+|---|---|---|
+| **Project URL** | Botão **Connect** (topo) ou **Settings → API Keys** | `https://algumacoisa.supabase.co` |
+| **Chave publicável** | **Settings → API Keys** → seção "Chave publicável" | Começa com `sb_publishable_` |
+
+> Nos projetos antigos, a chave publicável se chamava **anon public**. É a mesma
+> coisa: o site funciona com qualquer uma das duas.
+
+⚠️ A **Chave secreta** (`sb_secret_...`, antes `service_role`) **nunca** entra no
+site: ela ignora as regras de segurança do banco. Ela só é usada por você, em
+comandos manuais, como os do manual do administrador mais abaixo.
+
+A chave publicável pode ficar no código e no GitHub sem problema: é para isso
+que ela existe. Quem protege os dados são as regras (RLS) do `schema.sql` —
+por isso o passo 1 precisa ter sido feito antes.
+
+Depois de preencher, salve, faça commit e push. A Vercel publica sozinha.
 
 ### 4. Publicar na Vercel
 1. Em **vercel.com**, clique em **Add New → Project** e importe o repositório.

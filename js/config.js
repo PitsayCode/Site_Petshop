@@ -5,15 +5,20 @@ window.PET_CONFIG = {
   whatsapp: "5511934208414",
   instagram: "https://www.instagram.com/pettemhome/",
 
-  // Supabase (banco de dados online, gratuito). Veja o passo a passo no README.
-  // Supabase → Project Settings → API:
-  //   supabaseUrl     = "Project URL"      (ex.: https://abcdefgh.supabase.co)
-  //   supabaseAnonKey = "anon public" key  (é pública por natureza; a proteção
-  //                                         dos dados vem das regras do banco)
+  // Supabase (banco de dados online, gratuito). Passo a passo no README.
+  //
+  // No painel do Supabase: Settings → API Keys (ou o botão "Connect" no topo).
+  //   supabaseUrl = "Project URL"       → https://SEU-PROJETO.supabase.co
+  //   supabaseKey = "Chave publicável"  → começa com sb_publishable_
+  //                 (nos projetos antigos chamava "anon public")
+  //
+  // A chave publicável PODE ficar aqui: ela respeita as regras do banco (RLS).
+  // A "Chave secreta" (sb_secret_...) NUNCA entra no site: ela ignora as regras.
+  //
   // Enquanto ficarem vazios, o site funciona em MODO DEMONSTRAÇÃO: tudo fica
   // salvo só no navegador de quem está usando.
   supabaseUrl: "",
-  supabaseAnonKey: "",
+  supabaseKey: "",
 
   // Lojas exibidas no mapa. Coordenadas aproximadas (OpenStreetMap) —
   // confirme no Google Maps com o cliente antes de publicar.

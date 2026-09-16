@@ -3,7 +3,7 @@
 // Uma única interface (window.PetAPI) para o site, a conta do cliente, o
 // formulário de solicitação e o painel da loja, com dois "motores":
 //
-//  * supabase → banco online (quando supabaseUrl/supabaseAnonKey estão em
+//  * supabase → banco online (quando supabaseUrl/supabaseKey estão em
 //                js/config.js). Solicitações feitas em qualquer aparelho
 //                aparecem no painel da loja.
 //  * demo     → tudo salvo no navegador (para apresentar sem configurar nada).
@@ -20,7 +20,9 @@
   var C = window.PetCrypto;
   var CFG = window.PET_CONFIG;
 
-  var CONFIGURED = !!(CFG.supabaseUrl && CFG.supabaseAnonKey);
+  // aceita o nome novo (chave publicável) e o antigo (anon public)
+  var SUPABASE_KEY = CFG.supabaseKey || CFG.supabaseAnonKey || "";
+  var CONFIGURED = !!(CFG.supabaseUrl && SUPABASE_KEY);
   var HAS_LIB = !!(window.supabase && window.supabase.createClient);
   var MODE = CONFIGURED ? (HAS_LIB ? "supabase" : "offline") : "demo";
 
@@ -219,7 +221,7 @@
 
   // ================= motor SUPABASE =================
   var sb = MODE === "supabase"
-    ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
+    ? window.supabase.createClient(CFG.supabaseUrl, SUPABASE_KEY, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       })
     : null;
