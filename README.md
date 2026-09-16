@@ -147,4 +147,4 @@ Se o site ficar muito movimentado, vale contratar um serviço próprio de mapas
 
 - Produtos e preços: `js/data.js`
 - Lojas, coordenadas do mapa e WhatsApp: `js/config.js`
-- Ao alterar o CSS, aumente o número em `styles.css?v=5` nos arquivos HTML.
+- Ao alterar o CSS, aumente o número em `styles.css?v=7` nos arquivos HTML.
