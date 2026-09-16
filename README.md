@@ -123,6 +123,42 @@ Ao salvar um código novo, o antigo para de valer na hora.
 
 ---
 
+## Onde mexer no código (reset de senhas e código)
+
+Mapa rápido: cada linha diz **o que você quer fazer**, **onde isso acontece** e
+**onde está no código**, com o comando para achar o trecho na hora.
+
+| O que fazer | Onde a pessoa faz | Arquivo e trecho no código |
+|---|---|---|
+| Cliente pede link de nova senha | `/login` → "Esqueci minha senha" | Botão em `login.html` (`id="forgotBtn"`) → tela `#forgotView` em `js/login.js` → `requestPasswordReset()` em `js/api.js` |
+| Cliente grava a nova senha (volta do link do e-mail) | `/login` abre sozinho a tela | `#recoveryView` em `js/login.js` → `updatePassword()` em `js/api.js` |
+| Gestor pede link de nova senha | `/painel` → aba "Sou o gestor" → "Esqueci minha senha" | Botão em `painel.html` (`id="forgotStaff"`) → tratador em `js/painel.js` → `requestPasswordReset()` em `js/api.js` |
+| Gestor troca a própria senha já logado | `/painel` → ⚙️ Ajustes → "Senha de login do gestor" | Formulário `#loginPassForm` em `painel.html` e `js/painel.js` → `updatePassword()` em `js/api.js` |
+| Gestor cria ou troca o código da equipe | `/painel` → ⚙️ Ajustes → "Código da equipe" | Formulário `#codeSetForm` em `painel.html` e `js/painel.js` → `setStaffCode()` em `js/api.js` → função `set_staff_code` em `supabase/schema.sql` |
+| Gestor desliga o acesso por código | `/painel` → ⚙️ Ajustes → "Desativar acesso por código" | Botão `#disableCode` em `js/painel.js` → `setStaffCode(null)` |
+| Funcionário entra com o código | `/painel` → aba "Sou da equipe" | `#codeForm` em `painel.html` → `codeEnter()` em `js/api.js` → função `check_code` em `supabase/schema.sql` |
+
+Para achar qualquer um desses trechos, rode na pasta do projeto:
+
+```bash
+grep -rn "requestPasswordReset\|updatePassword\|setStaffCode\|codeEnter" js/
+```
+
+### Onde ficam as regras (se precisar mudar)
+
+| Regra | Onde |
+|---|---|
+| Senha precisa ter 8+ caracteres, com letras e números | `validatePassword()` em `js/api.js` |
+| Código precisa ter 6+ caracteres | `setStaffCode()` em `js/api.js` **e** `set_staff_code` em `supabase/schema.sql` (mude nos dois) |
+| Limite de tentativas do código (20 erros a cada 15 min) | `check_code` em `supabase/schema.sql` |
+| Para onde o link do e-mail volta | `requestPasswordReset()` em `js/api.js` (`redirectTo`) e **Authentication → URL Configuration** no Supabase |
+| Quem é gestor | Tabela `staff` (veja o manual do administrador abaixo) |
+
+### Modo demonstração (sem Supabase)
+Não existe envio de e-mail: o "esqueci minha senha" avisa que só funciona no
+modo online. Para começar do zero na demonstração, use o botão **Limpar
+demonstração** no painel, que chama `clearDemoData()` em `js/api.js`.
+
 ## Manual do administrador (Supabase)
 
 Tudo aqui é feito no painel do Supabase, sem depender de ninguém.
