@@ -1,4 +1,4 @@
-// Pet Tem Home — mapa das lojas (Leaflet + OpenStreetMap)
+// Bosque Pet — mapa das lojas (Leaflet + OpenStreetMap)
 //
 // - Marcadores com a ponta exatamente sobre a loja
 // - Lista e mapa sincronizados (clicar em um destaca o outro)
@@ -98,7 +98,7 @@
     dist.hidden = true;
     head.appendChild(dist);
     body.appendChild(head);
-    body.appendChild(el("address", "", hasPin(s) ? fullAddress(s) : "Francisco Morato – SP · endereço a confirmar"));
+    body.appendChild(el("address", "", hasPin(s) ? fullAddress(s) : "São Paulo – SP · endereço a confirmar"));
 
     var actions = el("div", "store-actions");
     if (hasPin(s)) {

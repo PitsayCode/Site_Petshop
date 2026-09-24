@@ -1,4 +1,4 @@
-// Pet Tem Home — modelos 3D: embalagens, comedouro, pote, bolinha e osso
+// Bosque Pet — modelos 3D: embalagens, comedouro, pote, bolinha e osso
 
 (function () {
   "use strict";
@@ -59,7 +59,7 @@
 
     var ink = o.ink || "#FFFCF4";
     d.silhouette(ctx, "paw", W * 0.21, H * 0.078, W * 0.085, o.accent);
-    d.text(ctx, "Pet Tem Home", W * 0.56, H * 0.095, "600 " + Math.round(W * 0.088) + "px Fredoka", ink);
+    d.text(ctx, "Bosque Pet", W * 0.56, H * 0.095, "600 " + Math.round(W * 0.088) + "px Fredoka", ink);
     d.text(ctx, o.tagline || "NUTRIÇÃO COM CARINHO", W * 0.5, H * 0.14, "800 " + Math.round(W * 0.03) + "px Nunito", "rgba(255,252,244,0.82)", { spacing: Math.round(W * 0.008) + "px" });
 
     var cx = W / 2, cy = H * 0.41, R = W * 0.31;
@@ -113,7 +113,7 @@
       ctx.fill();
       d.text(ctx, f, x + pw / 2, y + H * 0.032, "800 " + Math.round(W * 0.029) + "px Nunito", ink, { maxWidth: pw * 0.88 });
     });
-    d.text(ctx, o.note || "Pet Tem Home · Francisco Morato – SP", W / 2, H * 0.955, "700 " + Math.round(W * 0.025) + "px Nunito", "rgba(255,252,244,0.7)");
+    d.text(ctx, o.note || "Bosque Pet · São Paulo – SP", W / 2, H * 0.955, "700 " + Math.round(W * 0.025) + "px Nunito", "rgba(255,252,244,0.7)");
     return c;
   }
 
@@ -122,7 +122,7 @@
     ctx.fillStyle = o.colorBottom;
     ctx.fillRect(0, 0, W, H);
     for (var i = 0; i < 30; i++) d.leaf(ctx, r() * W, r() * H, W * (0.02 + r() * 0.03), r() * 6.28, "rgba(255,255,255,0.05)");
-    d.text(ctx, "Pet Tem Home", W / 2, H * 0.09, "600 " + Math.round(W * 0.07) + "px Fredoka", "#FFFCF4");
+    d.text(ctx, "Bosque Pet", W / 2, H * 0.09, "600 " + Math.round(W * 0.07) + "px Fredoka", "#FFFCF4");
     d.roundRect(ctx, W * 0.08, H * 0.14, W * 0.84, H * 0.38, W * 0.03);
     ctx.fillStyle = "rgba(255,252,244,0.94)";
     ctx.fill();
@@ -323,7 +323,7 @@
     for (var p = 0; p < 9; p++) d.leaf(ctx, W * 0.3 + p * 16, LH * 0.95, 60 + r() * 50, -0.3 + r() * 0.6, "rgba(141,191,90,0.55)");
     d.silhouette(ctx, "fish", W * 0.37, LH * 0.55, LH * 0.46, "#E98B2A");
     d.silhouette(ctx, "fish", W * 0.34, LH * 0.25, LH * 0.2, "#E9C44A");
-    d.text(ctx, "Pet Tem Home", W * 0.56, LH * 0.28, "600 52px Fredoka", "#FFFCF4", { maxWidth: W * 0.28 });
+    d.text(ctx, "Bosque Pet", W * 0.56, LH * 0.28, "600 52px Fredoka", "#FFFCF4", { maxWidth: W * 0.28 });
     d.text(ctx, o.title || "RAÇÃO PARA PEIXES", W * 0.56, LH * 0.52, "700 56px Fredoka", "#F3CF6A", { maxWidth: W * 0.3 });
     d.text(ctx, o.subtitle || "Flocos tropicais · 100 g", W * 0.56, LH * 0.7, "800 32px Nunito", "#FFFCF4", { maxWidth: W * 0.3 });
     d.barcode(ctx, W * 0.76, LH * 0.3, W * 0.07, LH * 0.3, r);
@@ -361,7 +361,7 @@
     ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 1;
     K.draw.silhouette(ctx, "paw", W * 0.25, H * 0.42, 60, "rgba(29,63,41,0.85)");
-    K.draw.text(ctx, "PET TEM HOME", W * 0.25, H * 0.56, "700 34px Fredoka", "rgba(29,63,41,0.85)");
+    K.draw.text(ctx, "BOSQUE PET", W * 0.25, H * 0.56, "700 34px Fredoka", "rgba(29,63,41,0.85)");
     var felt = K.M.fabric("#ffffff", { map: K.tex(c), sheenColor: K.shade(o.color || "#CFE042", 0.04), sheenRoughness: 0.6, bumpMap: K.T.fuzz(), bumpScale: 0.025 });
     var ball = new THREE.Group();
     ball.add(new THREE.Mesh(new THREE.SphereGeometry(R, 96, 64), felt));

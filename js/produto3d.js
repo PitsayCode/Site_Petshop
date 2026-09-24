@@ -1,4 +1,4 @@
-// Pet Tem Home — vitrine 3D, fotos dos produtos e visualização rápida
+// Bosque Pet — vitrine 3D, fotos dos produtos e visualização rápida
 // Usa o motor em js/3d/core.js. Carregue este arquivo ANTES de js/main.js.
 
 (function () {

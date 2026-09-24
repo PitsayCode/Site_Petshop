@@ -9,3 +9,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Materiais do cliente: contrato (CPF, endereço), apresentação, backup.
+# Ficam só no computador, nunca no GitHub nem na hospedagem.
+_cliente/

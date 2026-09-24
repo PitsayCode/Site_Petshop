@@ -1,4 +1,4 @@
-// Pet Tem Home — funções de senha usadas pelo MODO DEMONSTRAÇÃO
+// Bosque Pet — funções de senha usadas pelo MODO DEMONSTRAÇÃO
 //
 // No modo online quem cuida das senhas é o Supabase Auth (hash bcrypt no
 // servidor). Aqui ficam só as funções equivalentes para a demonstração, que
@@ -17,7 +17,7 @@
 
   var PBKDF2_ITERATIONS = 600000;
   var EMAIL_INDEX_ITERATIONS = 100000;
-  var EMAIL_INDEX_SALT = "pettemhome:email-index:v1";
+  var EMAIL_INDEX_SALT = "bosquepet:email-index:v1";
 
   function assertSupport() {
     if (!subtle) {

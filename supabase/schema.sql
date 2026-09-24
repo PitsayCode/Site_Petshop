@@ -1,5 +1,5 @@
 -- =====================================================================
--- Pet Tem Home — banco de dados (Supabase / PostgreSQL)
+-- Bosque Pet — banco de dados (Supabase / PostgreSQL)
 --
 -- Como usar: Supabase → SQL Editor → New query → cole tudo → Run.
 -- Pode rodar de novo sem problema (os comandos são idempotentes).
@@ -26,7 +26,7 @@ create extension if not exists pgcrypto with schema extensions;
 -- ---------------------------------------------------------------------
 create table if not exists public.staff (
   user_id    uuid primary key references auth.users(id) on delete cascade,
-  name       text not null default 'Equipe Pet Tem Home',
+  name       text not null default 'Equipe Bosque Pet',
   created_at timestamptz not null default now()
 );
 
@@ -374,7 +374,7 @@ end $$;
 -- 2. Rode, trocando o e-mail:
 --
 --    insert into public.staff (user_id, name)
---    select id, 'Pet Tem Home' from auth.users where email = 'gestor@exemplo.com'
+--    select id, 'Bosque Pet' from auth.users where email = 'gestor@exemplo.com'
 --    on conflict (user_id) do nothing;
 --
 -- 3. Entre em /painel com esse e-mail e defina o código da equipe em Ajustes.

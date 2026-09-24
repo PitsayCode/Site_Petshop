@@ -1,4 +1,4 @@
-// Pet Tem Home — painel da loja
+// Bosque Pet — painel da loja
 //
 // Entrada: gestor (e-mail e senha) ou equipe (só o código definido pelo gestor).
 // Depois: quadro de solicitações, lista de clientes e, para o gestor, ajustes.
@@ -105,10 +105,16 @@
   paintSound();
 
   // ================= entrada =================
+  $("#demoGateHint").hidden = API.mode !== "demo";   // dica só aparece na demonstração
+
   async function boot() {
     stopLive();
     show("gateLoading");
     try {
+      // atalho da demonstração: painel.html?demo=1 entra direto, sem digitar o código
+      if (API.mode === "demo" && new URLSearchParams(location.search).get("demo") === "1") {
+        try { await API.codeEnter("1234", false); startDashboard(); return; } catch (e) { /* segue o fluxo normal */ }
+      }
       if (await API.codeRemembered()) { startDashboard(); return; }
       var session = await API.staffSession();
       if (!session) { show("gateLogin"); return; }
@@ -394,7 +400,7 @@
     var badge = $("#newCount");
     badge.hidden = newCount === 0;
     badge.textContent = "🔴 " + newCount + (newCount === 1 ? " nova" : " novas");
-    document.title = (newCount ? "(" + newCount + ") " : "") + "Painel da Loja — Pet Tem Home";
+    document.title = (newCount ? "(" + newCount + ") " : "") + "Painel da Loja — Bosque Pet";
 
     var tabs = $("#colTabs");
     tabs.innerHTML = "";
@@ -481,7 +487,7 @@
       var phone = digits(customer.phone);
       contact.appendChild(link(customer.phone, "tel:" + phone));
       contact.appendChild(document.createTextNode(" · "));
-      contact.appendChild(link("WhatsApp ↗", "https://wa.me/55" + phone.replace(/^55/, "") + "?text=" + encodeURIComponent("Olá, " + API.firstName(customer.name) + "! Aqui é da Pet Tem Home, sobre a solicitação " + r.code + "."), true));
+      contact.appendChild(link("WhatsApp ↗", "https://wa.me/55" + phone.replace(/^55/, "") + "?text=" + encodeURIComponent("Olá, " + API.firstName(customer.name) + "! Aqui é da Bosque Pet, sobre a solicitação " + r.code + "."), true));
       if (r.contact) contact.appendChild(document.createTextNode(" · prefere " + r.contact));
       card.appendChild(section("Cliente", contact));
     }
@@ -501,7 +507,7 @@
       addr.appendChild(document.createTextNode(a.district + (a.cep ? " · CEP " + a.cep : "") + (a.city ? " · " + a.city : "")));
       if (a.reference) { addr.appendChild(el("br")); addr.appendChild(document.createTextNode("Ref.: " + a.reference)); }
       addr.appendChild(el("br"));
-      addr.appendChild(link("Abrir rota ↗", "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(a.street + ", " + a.number + ", " + a.district + ", " + (a.city || "Francisco Morato - SP")), true));
+      addr.appendChild(link("Abrir rota ↗", "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(a.street + ", " + a.number + ", " + a.district + ", " + (a.city || "São Paulo - SP")), true));
       card.appendChild(section("Entregar em", addr));
     }
 

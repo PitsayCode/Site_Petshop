@@ -1,4 +1,4 @@
-// Pet Tem Home — motor 3D dos produtos (Three.js r147)
+// Bosque Pet — motor 3D dos produtos (Three.js r147)
 //
 // - Iluminação de estúdio com mapa de ambiente (reflexos reais em metal,
 //   plástico e vidro), tone mapping ACES e sombras suaves.

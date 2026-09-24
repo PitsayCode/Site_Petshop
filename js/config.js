@@ -1,60 +1,60 @@
-// Pet Tem Home — configuração central do site
-// Tudo que muda entre "demonstração" e "produção" fica aqui.
+// Bosque Pet — configuração central do site
+//
+// Projeto de demonstração: a loja, os contatos e os endereços são fictícios.
+// Tudo que muda entre "demonstração" e "produção" fica neste arquivo.
 
 window.PET_CONFIG = {
-  whatsapp: "5511934208414",
-  instagram: "https://www.instagram.com/pettemhome/",
+  // Contatos da loja. Vazio = os botões de WhatsApp abrem o app sem destinatário.
+  whatsapp: "",
+  instagram: "https://www.instagram.com/",
 
-  // Supabase (banco de dados online, gratuito). Passo a passo no README.
+  // Supabase (banco de dados online). Enquanto estes campos ficarem vazios, o
+  // site roda em MODO DEMONSTRAÇÃO: contas, pedidos e painel funcionam com os
+  // dados salvos no navegador de quem está visitando, sem back-end nenhum.
   //
-  // No painel do Supabase: Settings → API Keys (ou o botão "Connect" no topo).
+  // Para ligar a um banco de verdade, no painel do Supabase (Settings → API Keys
+  // ou o botão "Connect"):
   //   supabaseUrl = "Project URL"       → https://SEU-PROJETO.supabase.co
   //   supabaseKey = "Chave publicável"  → começa com sb_publishable_
-  //                 (nos projetos antigos chamava "anon public")
   //
-  // A chave publicável PODE ficar aqui: ela respeita as regras do banco (RLS).
-  // A "Chave secreta" (sb_secret_...) NUNCA entra no site: ela ignora as regras.
-  //
-  // Enquanto ficarem vazios, o site funciona em MODO DEMONSTRAÇÃO: tudo fica
-  // salvo só no navegador de quem está usando.
-  // E-mail(s) que podem entrar no painel como GESTOR. Qualquer outro e-mail
-  // é recusado no login, mesmo com a senha certa. Para trocar de gestor,
-  // altere aqui (e, no modo online, marque a conta na tabela staff do banco).
-  // Lista vazia ([]) = qualquer conta marcada como staff pode entrar.
-  managerEmails: ["victoralexandre608@gmail.com"],
+  // A chave publicável pode ficar aqui: ela respeita as regras de acesso do
+  // banco (RLS). A chave secreta (sb_secret_...) nunca entra no site.
+  supabaseUrl: "",
+  supabaseKey: "",
 
-  supabaseUrl: "https://knpcvojrntdehuwbtohd.supabase.co",
-  supabaseKey: "sb_publishable__DcxQUvH65EgSjQTXzkrDg_n4u6A_j0",
+  // E-mails que podem entrar no painel como gestor. Lista vazia = qualquer
+  // conta marcada como equipe entra (no modo demonstração, qualquer e-mail).
+  managerEmails: [],
 
-  // Lojas exibidas no mapa. Coordenadas aproximadas (OpenStreetMap) —
-  // confirme no Google Maps com o cliente antes de publicar.
+  // Unidades exibidas no mapa. Endereços fictícios; as coordenadas apontam
+  // para pontos reais de São Paulo só para o mapa ficar bonito na demonstração.
   stores: [
     {
       id: "loja1",
-      name: "Loja 1",
-      district: "Jardim Santo Antônio",
-      address: "Rua Olavo Bilac, 743 – Jardim Santo Antônio",
-      city: "Francisco Morato – SP",
-      lat: -23.2776,
-      lng: -46.7521
+      name: "Unidade Vila Madalena",
+      district: "Vila Madalena",
+      address: "Rua das Acácias, 120 – Vila Madalena",
+      city: "São Paulo – SP",
+      lat: -23.5546,
+      lng: -46.6906
     },
     {
       id: "loja2",
-      name: "Loja 2",
-      district: "Jardim Sílvia",
-      address: "Estrada Arcílio Federzoni, 31 – Jardim Sílvia",
-      city: "Francisco Morato – SP",
-      lat: -23.2717,
-      lng: -46.7306
+      name: "Unidade Santana",
+      district: "Santana",
+      address: "Av. Braz Leme, 980 – Santana",
+      city: "São Paulo – SP",
+      lat: -23.5040,
+      lng: -46.6285
     },
     {
       id: "loja3",
-      name: "Loja 3",
-      district: "Francisco Morato",
-      address: "Endereço a confirmar pelo WhatsApp",
-      city: "Francisco Morato – SP",
-      lat: null,
-      lng: null
+      name: "Unidade Tatuapé",
+      district: "Tatuapé",
+      address: "Rua Serra de Bragança, 310 – Tatuapé",
+      city: "São Paulo – SP",
+      lat: -23.5395,
+      lng: -46.5750
     }
   ]
 };

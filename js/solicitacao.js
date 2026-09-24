@@ -1,4 +1,4 @@
-// Pet Tem Home — formulário de solicitação
+// Bosque Pet — formulário de solicitação
 
 (function () {
   "use strict";
@@ -182,7 +182,7 @@
     $("#doneStatus").textContent = r.statusLabel;
     $("#doneStore").textContent = (r.snapshot && r.snapshot.store) || "";
     $("#doneKind").textContent = r.kind;
-    $("#doneWhats").href = "https://wa.me/" + CFG.whatsapp + "?text=" + encodeURIComponent("Olá! Enviei a solicitação " + r.code + " pelo site da Pet Tem Home 🐾");
+    $("#doneWhats").href = "https://wa.me/" + CFG.whatsapp + "?text=" + encodeURIComponent("Olá! Enviei a solicitação " + r.code + " pelo site da Bosque Pet 🐾");
     show("reqDone");
     window.scrollTo({ top: 0, behavior: "smooth" });
     toast("Solicitação " + r.code + " enviada!");

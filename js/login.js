@@ -1,4 +1,4 @@
-// Pet Tem Home — Minha conta: entrar, criar conta, recuperar senha,
+// Bosque Pet — Minha conta: entrar, criar conta, recuperar senha,
 // completar cadastro, solicitações e dados de entrega
 
 (function () {
@@ -69,7 +69,7 @@
       '</div>' +
       '<div class="field-row">' +
         '<div class="field"><label for="{p}Cep">CEP</label><input id="{p}Cep" name="cep" inputmode="numeric" autocomplete="postal-code" placeholder="07900-000"></div>' +
-        '<div class="field"><label for="{p}City">Cidade</label><input id="{p}City" name="city" value="Francisco Morato – SP" autocomplete="address-level2"></div>' +
+        '<div class="field"><label for="{p}City">Cidade</label><input id="{p}City" name="city" value="São Paulo – SP" autocomplete="address-level2"></div>' +
       '</div>' +
       '<div class="field"><label for="{p}Ref">Ponto de referência</label><input id="{p}Ref" name="reference" placeholder="Ex.: portão verde, ao lado da padaria"></div>' +
     '</fieldset>';
@@ -108,7 +108,7 @@
 
   function fillProfile(form, p) {
     var a = (p && p.address) || {};
-    var values = { name: p && p.name, email: p && p.email, phone: p && p.phone, street: a.street, number: a.number, complement: a.complement, district: a.district, cep: a.cep, city: a.city || "Francisco Morato – SP", reference: a.reference };
+    var values = { name: p && p.name, email: p && p.email, phone: p && p.phone, street: a.street, number: a.number, complement: a.complement, district: a.district, cep: a.cep, city: a.city || "São Paulo – SP", reference: a.reference };
     Object.keys(values).forEach(function (k) {
       if (form.elements[k] && values[k] !== undefined && values[k] !== null) form.elements[k].value = values[k];
     });

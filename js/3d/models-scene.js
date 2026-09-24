@@ -1,4 +1,4 @@
-// Pet Tem Home — modelos 3D: aquário, plantas, arranhador e roupinhas
+// Bosque Pet — modelos 3D: aquário, plantas, arranhador e roupinhas
 
 (function () {
   "use strict";
@@ -488,7 +488,7 @@
       ctx.setLineDash([]);
       ctx.fillStyle = "rgba(0,0,0,0.12)"; ctx.fillRect(0, H * 0.835, W, 6);
       d.silhouette(ctx, "paw", W * 0.5, H * 0.28, W * 0.2, K.shade(base, 0.22));
-      d.text(ctx, "PET TEM HOME", W * 0.5, H * 0.42, "700 " + Math.round(W * 0.05) + "px Fredoka", K.shade(base, 0.22));
+      d.text(ctx, "BOSQUE PET", W * 0.5, H * 0.42, "700 " + Math.round(W * 0.05) + "px Fredoka", K.shade(base, 0.22));
     } else {
       ctx.fillStyle = "#DADFE3"; ctx.fillRect(0, H * 0.58, W, H * 0.07);
       ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.fillRect(0, H * 0.595, W, H * 0.012);
@@ -537,7 +537,7 @@
     tctx.fillStyle = "#FFFCF4"; tctx.fillRect(0, 0, 256, 380);
     tctx.fillStyle = "#2E5E3E"; tctx.fillRect(0, 0, 256, 120);
     K.draw.silhouette(tctx, "paw", 128, 62, 80, "#F7F3E8");
-    K.draw.text(tctx, "Pet Tem Home", 128, 175, "600 34px Fredoka", "#2E5E3E");
+    K.draw.text(tctx, "Bosque Pet", 128, 175, "600 34px Fredoka", "#2E5E3E");
     K.draw.text(tctx, o.size || "P · M · G · GG", 128, 230, "800 26px Nunito", "#4B5944");
     tctx.strokeStyle = "#ddd"; tctx.lineWidth = 6;
     tctx.beginPath(); tctx.arc(128, 330, 16, 0, 7); tctx.stroke();

@@ -1,4 +1,4 @@
-// Pet Tem Home — modelos 3D: vara com molinete, iscas e ferramentas de jardim
+// Bosque Pet — modelos 3D: vara com molinete, iscas e ferramentas de jardim
 
 (function () {
   "use strict";

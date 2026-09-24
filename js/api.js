@@ -1,4 +1,4 @@
-// Pet Tem Home — camada de dados
+// Bosque Pet — camada de dados
 //
 // Uma única interface (window.PetAPI) para o site, a conta do cliente, o
 // formulário de solicitação e o painel da loja, com dois "motores":
@@ -30,9 +30,9 @@
   var STATUS_ORDER = ["pendente", "em_andamento", "concluido"];
   var KINDS = ["Pedido de produtos", "Encomenda de produto", "Orçamento", "Dúvida ou outro assunto"];
   var PAYMENTS = ["Pix", "Cartão", "Dinheiro"];
-  var CODE_REMEMBER = "ptm3_panel_code";
-  var PANEL_DEMO = "ptm3_panel_demo";
-  var PENDING = "ptm3_pending_profile";
+  var CODE_REMEMBER = "bp_panel_code";
+  var PANEL_DEMO = "bp_panel_demo";
+  var PENDING = "bp_pending_profile";
 
   var accessMode = null;   // "manager" (gestor logado) ou "code" (equipe)
   var staffCode = null;    // código digitado pela equipe
@@ -72,7 +72,7 @@
 
   // ---------- avisos de mudança (entre abas e na própria aba) ----------
   var listeners = [];
-  var channel = "BroadcastChannel" in window ? new BroadcastChannel("pettemhome") : null;
+  var channel = "BroadcastChannel" in window ? new BroadcastChannel("bosquepet") : null;
   function emit() { listeners.forEach(function (cb) { try { cb(); } catch (e) { /* ignora */ } }); }
   function notify() {
     if (channel) channel.postMessage("changed");
@@ -95,8 +95,8 @@
 
   // ================= motor DEMO (tudo no navegador) =================
   var DK = {
-    users: "ptm3_users", customers: "ptm3_customers", requests: "ptm3_requests",
-    seq: "ptm3_seq", access: "ptm3_access", session: "ptm3_session", throttle: "ptm3_throttle"
+    users: "bp_users", customers: "bp_customers", requests: "bp_requests",
+    seq: "bp_seq", access: "bp_access", session: "bp_session", throttle: "bp_throttle"
   };
 
   var demo = {
@@ -528,6 +528,7 @@
 
   // ---------- acesso da equipe por código ----------
   async function codeEnter(code, remember) {
+    if (MODE === "demo") await DEMO_READY;   // espera os dados de exemplo
     code = String(code || "").trim();
     if (!code) throw fail("VALIDATION", "Digite o código da equipe.");
     var ok = await A.rpcEnter(code);
@@ -606,7 +607,7 @@
   function clearDemoData() {
     if (MODE !== "demo") return;
     Object.keys(localStorage).forEach(function (k) {
-      if (k.indexOf("ptm3_") === 0 || k.indexOf("ptm2_") === 0 || k.indexOf("ptm_db_") === 0) localStorage.removeItem(k);
+      if (k.indexOf("bp_") === 0 || k.indexOf("ptm2_") === 0 || k.indexOf("ptm_db_") === 0) localStorage.removeItem(k);
     });
     accessMode = null;
     staffCode = null;
@@ -619,6 +620,67 @@
     set: function (items) { writeLS("ptm_cart", items); },
     clear: function () { localStorage.removeItem("ptm_cart"); notify(); }
   };
+
+
+  // ================= dados de exemplo (só no MODO DEMONSTRAÇÃO) =================
+  // Assim o painel e o catálogo abrem com conteúdo, sem ninguém precisar cadastrar nada.
+  var DEMO_SEED = "bp_seeded";
+
+  async function seedDemo() {
+    if (MODE !== "demo" || localStorage.getItem(DEMO_SEED)) return;
+    localStorage.setItem(DEMO_SEED, "1");
+
+    var clientes = [
+      {
+        user_id: "u_demo_1", name: "Jéssica Martins", email: "jessica@exemplo.com", phone: "(11) 98888-1122",
+        address: { street: "Rua das Acácias", number: "120", complement: "ap. 41", district: "Vila Madalena", city: "São Paulo – SP", zip: "05435-000" }
+      },
+      {
+        user_id: "u_demo_2", name: "Carlos Ribeiro", email: "carlos@exemplo.com", phone: "(11) 97777-3344",
+        address: { street: "Av. Braz Leme", number: "980", complement: "", district: "Santana", city: "São Paulo – SP", zip: "02022-010" }
+      }
+    ];
+    var pessoas = {};
+    clientes.forEach(function (c) {
+      pessoas[c.user_id] = Object.assign({ created_at: iso(), updated_at: iso(), last_login_at: iso() }, c);
+    });
+    writeLS(DK.customers, pessoas);
+
+    var agora = Date.now();
+    var exemplos = [
+      { n: 1, uid: "u_demo_1", status: "pendente", seen: false, min: 14, loja: 0, delivery: "entrega",
+        items: [{ name: "Ração Cães Adultos 15 kg", qty: 1, price: 189.9 }, { name: "Petisco Bifinho 500 g", qty: 2, price: 23.9 }] },
+      { n: 2, uid: "u_demo_2", status: "em_andamento", seen: true, min: 95, loja: 1, delivery: "retirada",
+        items: [{ name: "Aquário 40 L completo", qty: 1, price: 329 }] },
+      { n: 3, uid: "u_demo_1", status: "concluido", seen: true, min: 1480, loja: 2, delivery: "entrega",
+        items: [{ name: "Arranhador para gatos", qty: 1, price: 149.9 }] }
+    ];
+
+    var linhas = exemplos.map(function (p) {
+      var quando = new Date(agora - p.min * 60000).toISOString();
+      var cliente = pessoas[p.uid];
+      var loja = CFG.stores[p.loja] || CFG.stores[0];
+      return {
+        id: C.randomId("r_"), number: p.n, customer_id: p.uid,
+        store_id: loja.id, kind: KINDS[0], delivery: p.delivery, payment: PAYMENTS[0],
+        contact: "WhatsApp", items: p.items, message: "",
+        total: p.items.reduce(function (s, i) { return s + i.price * i.qty; }, 0),
+        status: p.status, seen_by_store: p.seen,
+        created_at: quando, updated_at: quando, status_changed_at: quando,
+        snapshot: {
+          store: loja.name + " – " + loja.district,
+          customer: { name: cliente.name, phone: cliente.phone, email: cliente.email },
+          address: p.delivery === "entrega" ? cliente.address : null
+        }
+      };
+    }).reverse();
+
+    writeLS(DK.requests, linhas);
+    localStorage.setItem(DK.seq, JSON.stringify(exemplos.length));
+    await demo.setStaffCode("1234");
+    notify();
+  }
+  var DEMO_READY = seedDemo();   // quem precisa dos dados de exemplo espera por esta promessa
 
   window.PetAPI = {
     mode: MODE,

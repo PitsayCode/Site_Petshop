@@ -1,4 +1,4 @@
-// Pet Tem Home — comportamento da página inicial
+// Bosque Pet — comportamento da página inicial
 // Menu interativo, catálogo com fotos 3D, sacola, checkout e mapa.
 // A vitrine 3D e a visualização rápida ficam em js/produto3d.js.
 

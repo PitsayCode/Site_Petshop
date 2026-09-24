@@ -1,4 +1,4 @@
-// Pet Tem Home — catálogo de produtos
+// Bosque Pet — catálogo de produtos
 // Preços ilustrativos: ajuste com a loja antes de publicar.
 // "model" define como o produto é desenhado em 3D (js/3d/*.js).
 
